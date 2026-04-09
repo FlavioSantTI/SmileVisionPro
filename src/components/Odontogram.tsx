@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { cn } from '../lib/utils';
 import { Check, Info } from 'lucide-react';
 
@@ -21,10 +21,11 @@ const ToothFace: React.FC<ToothFaceProps> = ({ toothId, face, isSelected, onTogg
       onToggle(toothId, face);
     }}
     className={cn(
-      "cursor-pointer transition-all duration-200 stroke-charcoal-950 stroke-[0.8]",
+      "cursor-pointer transition-all duration-200 stroke-charcoal-950",
       isSelected ? "fill-primary-500 stroke-primary-600" : "fill-white hover:fill-charcoal-100",
       className
     )}
+    strokeWidth="1.2"
   />
 );
 
@@ -65,9 +66,14 @@ const Tooth: React.FC<ToothProps> = ({ id, selectedFaces, onToggleFace, label })
               d={face.d}
             />
           ))}
-          {/* Internal lines for quadrants */}
-          <line x1="15" y1="15" x2="35" y2="35" stroke="currentColor" strokeWidth="0.5" className="text-charcoal-200 pointer-events-none" />
-          <line x1="35" y1="15" x2="15" y2="35" stroke="currentColor" strokeWidth="0.5" className="text-charcoal-200 pointer-events-none" />
+          {/* Ranhuras (Separators) - More evident as requested */}
+          <g className="text-charcoal-950 pointer-events-none" stroke="currentColor" strokeWidth="1.2" fill="none">
+            <rect x="15" y="15" width="20" height="20" />
+            <line x1="5" y1="5" x2="15" y2="15" />
+            <line x1="45" y1="5" x2="35" y2="15" />
+            <line x1="45" y1="45" x2="35" y2="35" />
+            <line x1="5" y1="45" x2="15" y2="35" />
+          </g>
         </svg>
       </div>
       {/* Tooth ID Label */}
@@ -94,6 +100,15 @@ export const Odontogram: React.FC<OdontogramProps> = ({
 }) => {
   const [denticao, setDenticao] = useState<DentitionType>(initialDentition);
   const [selectedTeeth, setSelectedTeeth] = useState<string[]>(initialSelection);
+
+  // Sync internal state with props when they change externally
+  useEffect(() => {
+    setSelectedTeeth(initialSelection);
+  }, [JSON.stringify(initialSelection)]);
+
+  useEffect(() => {
+    setDenticao(initialDentition);
+  }, [initialDentition]);
 
   const handleToggleFace = (toothId: string, face: string) => {
     const tag = `${toothId}-${face}`;

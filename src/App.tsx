@@ -40,7 +40,8 @@ import {
   ChevronRight,
   ChevronLeft,
   Layers,
-  Database
+  Database,
+  Mail
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { jsPDF } from 'jspdf';
@@ -55,6 +56,7 @@ import {
 } from './lib/db';
 import { Odontogram, type DentitionType } from './components/Odontogram';
 import { Logo } from './components/Logo';
+import { SplashScreen } from './components/SplashScreen';
 import { 
   getClinics, 
   getDentists, 
@@ -147,6 +149,7 @@ export default function App() {
   const [authName, setAuthName] = useState('');
   const [authConfirmPassword, setAuthConfirmPassword] = useState('');
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [showSplash, setShowSplash] = useState(true);
   const [authView, setAuthView] = useState<'login' | 'signup' | 'forgot'>('login');
   
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -456,6 +459,19 @@ export default function App() {
     canvas.requestRenderAll();
   };
 
+  const handleDeleteSelected = () => {
+    const canvas = fabricCanvasRef.current;
+    if (!canvas) return;
+    const activeObjects = canvas.getActiveObjects();
+    if (activeObjects.length > 0) {
+      activeObjects.forEach(obj => canvas.remove(obj));
+      canvas.discardActiveObject();
+      canvas.requestRenderAll();
+    } else {
+      toast.info('Selecione um objeto para deletar');
+    }
+  };
+
   // Auth listener
   useEffect(() => {
     const supabase = getSupabase();
@@ -472,7 +488,15 @@ export default function App() {
       setIsAuthLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    // Handle splash screen timeout
+    const splashTimeout = setTimeout(() => {
+      setShowSplash(false);
+    }, 5000); // 5 seconds for a premium feel as requested
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(splashTimeout);
+    };
   }, []);
 
   // Load initial cloud data
@@ -647,6 +671,8 @@ export default function App() {
     setIsAuthLoading(true);
     try {
       await signIn(authEmail, authPassword);
+      setShowSplash(true);
+      setTimeout(() => setShowSplash(false), 5000);
       toast.success('Bem-vindo de volta!');
     } catch (err: any) {
       toast.error(err.message || 'Erro ao entrar');
@@ -668,6 +694,8 @@ export default function App() {
     setIsAuthLoading(true);
     try {
       await signUp(authEmail, authPassword, authName);
+      setShowSplash(true);
+      setTimeout(() => setShowSplash(false), 5000);
       toast.success('Conta criada! Verifique seu e-mail para confirmar o cadastro.');
       setAuthView('login');
     } catch (err: any) {
@@ -955,6 +983,7 @@ export default function App() {
     setPatientSearch('');
     setCaptures([]);
     setSelectedCaptures(new Set());
+    setOdontogramData({ denticao: 'permanente', dentes_selecionados: [] });
     toast.info('Sessão encerrada. Realize o check-in para um novo atendimento.');
   };
 
@@ -1135,8 +1164,6 @@ export default function App() {
       await saveCapture(captureToSave);
       setCaptures(prev => [...prev, captureToSave]);
       setPendingCapture(null);
-      // Clear odontogram after successful capture
-      setOdontogramData(prev => ({ ...prev, dentes_selecionados: [] }));
       toast.success(skipOdontogram ? 'Captura salva!' : 'Captura salva com odontograma!');
     } catch (err) {
       console.error('Error saving capture:', err);
@@ -1355,15 +1382,8 @@ export default function App() {
 
   const sessionCaptures = selectedPatient ? captures.filter(c => c.id_patient === selectedPatient.id) : [];
 
-  if (isAuthLoading && !user) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 size={48} className="text-primary-500 animate-spin" />
-          <p className="text-charcoal-500 font-medium">Verificando autenticação...</p>
-        </div>
-      </div>
-    );
+  if ((isAuthLoading || showSplash) && !user) {
+    return <SplashScreen />;
   }
 
   if (!user) {
@@ -1515,6 +1535,9 @@ export default function App() {
 
   return (
     <div className="h-screen flex flex-col font-sans overflow-hidden">
+      <AnimatePresence>
+        {showSplash && <SplashScreen />}
+      </AnimatePresence>
       <Toaster position="top-center" richColors />
       
       {/* Check-in Overlay */}
@@ -2848,9 +2871,10 @@ export default function App() {
                       <Undo size={18} />
                     </button>
                     <button 
-                      onClick={handleClearAll}
+                      onClick={handleDeleteSelected}
+                      onDoubleClick={handleClearAll}
                       className="p-2 text-red-400 hover:bg-red-50 rounded-lg transition-all flex-shrink-0"
-                      title="Limpar Tudo"
+                      title="Deletar Selecionado (Duplo clique para Limpar Tudo)"
                     >
                       <Trash2 size={18} />
                     </button>
