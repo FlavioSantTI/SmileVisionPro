@@ -22,9 +22,9 @@ export const SplashScreen: React.FC = () => {
         opacity: 0,
         transition: { duration: 0.8, ease: [0.43, 0.13, 0.23, 0.96] }
       }}
-      className="fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center overflow-hidden"
+      className="fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center overflow-hidden touch-none h-[100dvh] w-full"
     >
-      <div className="relative flex flex-col items-center">
+      <div className="relative flex flex-col items-center px-6 w-full max-w-xs sm:max-w-sm">
         {/* Logo with Blur and Scale animation */}
         <motion.div
           initial={{ scale: 0.8, filter: 'blur(12px)', opacity: 0 }}
@@ -37,13 +37,15 @@ export const SplashScreen: React.FC = () => {
               ease: "easeOut" 
             }
           }}
-          className="mb-12"
+          className="mb-12 flex justify-center w-full"
         >
-          <Logo size={180} />
+          <div className="w-32 h-32 sm:w-44 sm:h-44 flex items-center justify-center">
+            <Logo size={undefined} className="w-full h-full" />
+          </div>
         </motion.div>
 
         {/* Progress Line */}
-        <div className="w-64 h-[2px] bg-charcoal-100 rounded-full overflow-hidden relative">
+        <div className="w-full max-w-[200px] h-[2px] bg-charcoal-100 rounded-full overflow-hidden relative">
           <motion.div
             initial={{ width: "0%" }}
             animate={{ 

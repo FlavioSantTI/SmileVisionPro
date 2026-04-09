@@ -12,7 +12,8 @@ Implementamos um novo sistema de inicialização com foco em "Fortaleza e Tecnol
 - **Animação de Foco Progressivo:** A logo emerge de um estado de desfoque e escala reduzida, simbolizando a clareza do diagnóstico.
 - **Sequência de Mensagens Inteligente:** O sistema agora guia o usuário através de uma sequência de estados ("Iniciando Sistema" -> "Verificando Autenticação"), eliminando telas de carregamento genéricas.
 - **Transições Fluídas:** Integração total com o fluxo de login e cadastro, garantindo que a primeira interação com o software seja memorável e profissional.
-- **Duração Otimizada:** Exposição de 5 segundos para garantir a fixação da marca e o carregamento completo do ambiente de nuvem.
+- **Duração Otimizada:** Exposição de 5 segundos quando o usuário está autenticado para garantir a fixação da marca; para usuários não autenticados, o sistema libera a tela de login instantaneamente após a verificação.
+- **Totalmente Responsivo:** Otimizado para dispositivos móveis com suporte a `100dvh`, garantindo uma experiência perfeita em qualquer tamanho de tela e evitando cortes ou saltos de interface.
 
 ## 🛠️ Tecnologias Utilizadas
 - **React 18+** com TypeScript

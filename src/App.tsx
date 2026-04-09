@@ -477,15 +477,28 @@ export default function App() {
     const supabase = getSupabase();
     
     // Check current session
+    // Initial session check
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
       setIsAuthLoading(false);
+      
+      // If no user is found on initial load, don't force the 5s wait
+      if (!currentUser) {
+        setShowSplash(false);
+      }
     });
 
     // Listen for changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
       setIsAuthLoading(false);
+      
+      // If user logs out, hide splash if it's showing
+      if (!currentUser) {
+        setShowSplash(false);
+      }
     });
 
     // Handle splash screen timeout
@@ -1383,12 +1396,19 @@ export default function App() {
   const sessionCaptures = selectedPatient ? captures.filter(c => c.id_patient === selectedPatient.id) : [];
 
   if ((isAuthLoading || showSplash) && !user) {
-    return <SplashScreen />;
+    return (
+      <AnimatePresence>
+        {(isAuthLoading || showSplash) && <SplashScreen key="splash-loading" />}
+      </AnimatePresence>
+    );
   }
 
   if (!user) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center p-6 relative overflow-hidden">
+        <AnimatePresence>
+          {showSplash && <SplashScreen key="splash-auth" />}
+        </AnimatePresence>
         {/* Background effects */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
           <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary-500/10 rounded-full blur-3xl" />
@@ -1535,8 +1555,8 @@ export default function App() {
 
   return (
     <div className="h-screen flex flex-col font-sans overflow-hidden">
-      <AnimatePresence>
-        {showSplash && <SplashScreen />}
+      <AnimatePresence mode="wait">
+        {showSplash && <SplashScreen key="splash-main" />}
       </AnimatePresence>
       <Toaster position="top-center" richColors />
       
