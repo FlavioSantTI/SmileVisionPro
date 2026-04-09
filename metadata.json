@@ -1,0 +1,7 @@
+{
+  "name": "SmileVision Pro",
+  "description": "Interface web para captura de frames em alta resolução diretamente do hardware SmileVision, com organização de galeria e exportação documental.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
