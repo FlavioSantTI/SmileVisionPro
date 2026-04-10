@@ -24,7 +24,7 @@ Implementamos um novo sistema de inicialização com foco em "Fortaleza e Tecnol
 - **Fabric.js** para edição e anotação avançada de imagens clínicas
 
 ## 📋 Funcionalidades Principais
-- **Captura em Tempo Real:** Integração direta com hardware de captura de imagem.
+- **Captura em Tempo Real:** Integração direta com hardware de captura de imagem. *Nota: Requer conexão segura (HTTPS) e permissão de câmera no navegador.*
 - **Odontograma Interativo:** Seleção precisa de elementos dentários para vinculação de capturas.
 - **Editor de Imagens:** Ferramentas de anotação (setas, formas, textos) e ajustes de brilho/contraste.
 - **Gestão de Pacientes:** Fluxo completo de check-in, histórico e rastreabilidade clínica.

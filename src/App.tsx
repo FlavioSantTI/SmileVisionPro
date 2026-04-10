@@ -860,17 +860,24 @@ export default function App() {
     setIsRefreshing(true);
     setCameraError(null);
     
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+      setCameraError('Seu navegador não suporta acesso à câmera ou a conexão não é segura (HTTPS).');
+      setIsRefreshing(false);
+      return;
+    }
+
     try {
-      // 1. Try to get permission to unlock labels (like the user's snippet)
-      if (requestPermission || devices.length === 0) {
+      // 1. Try to get permission to unlock labels
+      if (requestPermission) {
         try {
           console.log('Requesting camera permission...');
-          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          const stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: 'environment' } 
+          });
           // If we got here, permission is granted!
           stream.getTracks().forEach(track => track.stop());
         } catch (permErr) {
           console.warn('Permission request failed or was ignored:', permErr);
-          // Don't return early, try to enumerate anyway
         }
       }
 
@@ -884,25 +891,28 @@ export default function App() {
       if (videoDevices.length > 0) {
         const isCurrentValid = videoDevices.some(d => d.deviceId === selectedDeviceId);
         if (!selectedDeviceId || !isCurrentValid) {
-          const bestDevice = videoDevices.find(d => d.label) || videoDevices[0];
+          // Prefer back camera on mobile if labels are available
+          const backCamera = videoDevices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('traseira'));
+          const bestDevice = backCamera || videoDevices.find(d => d.label) || videoDevices[0];
           setSelectedDeviceId(bestDevice.deviceId);
         }
       } else {
-        // Only set error if we really found nothing
-        setCameraError('Nenhuma câmera encontrada. Verifique a conexão.');
+        setCameraError('Nenhuma câmera encontrada. Verifique se o hardware está conectado.');
       }
       
       setRefreshTrigger(prev => prev + 1);
     } catch (err) {
       console.error('Device discovery error:', err);
-      setCameraError('Erro ao buscar hardware.');
+      setCameraError('Erro ao acessar o hardware de vídeo.');
     } finally {
       setIsRefreshing(false);
     }
-  }, [selectedDeviceId, devices.length]);
+  }, [selectedDeviceId]);
 
   // Initialize devices and captures
   useEffect(() => {
+    if (showSplash || isAuthLoading) return;
+    
     const init = async () => {
       try {
         // Always try to request permission on first load to unlock labels
@@ -935,10 +945,14 @@ export default function App() {
         // Try with the selected device ID first if available
         const constraints: MediaStreamConstraints = {
           video: selectedDeviceId ? {
-            deviceId: { ideal: selectedDeviceId },
+            deviceId: { exact: selectedDeviceId },
             width: { ideal: 1920 },
             height: { ideal: 1080 }
-          } : true // Fallback to basic { video: true } if no ID yet
+          } : {
+            facingMode: 'environment',
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
+          }
         };
 
         console.log('Starting stream with constraints:', constraints);
@@ -956,16 +970,25 @@ export default function App() {
           }
         }
       } catch (err) {
-        console.warn('Stream failed, trying basic fallback:', err);
+        console.warn('Stream failed with exact ID or facingMode, trying basic fallback:', err);
         try {
-          // Final fallback: basic getUserMedia (exactly like user's snippet)
-          const newStream = await navigator.mediaDevices.getUserMedia({ video: true });
+          // Final fallback: basic getUserMedia
+          const newStream = await navigator.mediaDevices.getUserMedia({ 
+            video: { 
+              width: { ideal: 1280 },
+              height: { ideal: 720 }
+            } 
+          });
           activeStream = newStream;
           setStream(newStream);
           refreshDevices(false);
         } catch (fallbackErr) {
           console.error('All stream attempts failed:', fallbackErr);
-          setCameraError('Acesso à câmera negado ou hardware não encontrado.');
+          if (!window.isSecureContext) {
+            setCameraError('Acesso negado: A câmera requer uma conexão segura (HTTPS).');
+          } else {
+            setCameraError('Acesso à câmera negado ou hardware não encontrado. Verifique as permissões do navegador.');
+          }
         }
       }
     };
