@@ -5,13 +5,33 @@ let supabaseInstance: SupabaseClient | null = null;
 export function getSupabase(): SupabaseClient {
   if (supabaseInstance) return supabaseInstance;
 
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  let supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim();
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
 
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Supabase URL and Anon Key are required. Please configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your environment.');
+  // Extremely defensive cleaning
+  if (supabaseUrl) {
+    // Remove all whitespace characters anywhere in the string
+    supabaseUrl = supabaseUrl.replace(/\s+/g, '');
+    // Ensure it starts with https:// if it doesn't have a protocol
+    if (!supabaseUrl.startsWith('http')) {
+      supabaseUrl = `https://${supabaseUrl}`;
+    }
+    // Remove trailing slash if present to avoid dual slashes
+    if (supabaseUrl.endsWith('/')) {
+      supabaseUrl = supabaseUrl.slice(0, -1);
+    }
   }
 
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error('Supabase Config Missing:', { 
+      hasUrl: !!supabaseUrl, 
+      hasKey: !!supabaseAnonKey,
+      urlPrefix: supabaseUrl?.substring(0, 10)
+    });
+    throw new Error('Supabase URL and Anon Key are required. Please configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in seu ambiente.');
+  }
+
+  console.log('Initializing Supabase client with URL:', supabaseUrl.substring(0, 20) + '...');
   supabaseInstance = createClient(supabaseUrl, supabaseAnonKey);
   
   return supabaseInstance;

@@ -169,6 +169,87 @@ export default function App() {
   const editorCanvasElementRef = useRef<HTMLCanvasElement>(null);
   const initialScaleRef = useRef<number>(1);
 
+  const addFabricRect = useCallback((x?: number, y?: number) => {
+    const canvas = fabricCanvasRef.current;
+    if (!canvas) return;
+    const rect = new fabric.Rect({
+      left: x !== undefined ? x : 100,
+      top: y !== undefined ? y : 100,
+      fill: 'transparent',
+      stroke: activeEditorColor,
+      strokeWidth: strokeWidth,
+      strokeDashArray: isDashed ? [10, 5] : null,
+      width: 100,
+      height: 100,
+      cornerColor: '#3b82f6',
+      cornerSize: 10,
+      transparentCorners: false
+    });
+    canvas.add(rect);
+    canvas.setActiveObject(rect);
+    canvas.requestRenderAll();
+  }, [activeEditorColor, strokeWidth, isDashed]);
+
+  const addFabricCircle = useCallback((x?: number, y?: number) => {
+    const canvas = fabricCanvasRef.current;
+    if (!canvas) return;
+    const circle = new fabric.Circle({
+      left: x !== undefined ? x : 100,
+      top: y !== undefined ? y : 100,
+      fill: 'transparent',
+      stroke: activeEditorColor,
+      strokeWidth: strokeWidth,
+      strokeDashArray: isDashed ? [10, 5] : null,
+      radius: 50,
+      cornerColor: '#3b82f6',
+      cornerSize: 10,
+      transparentCorners: false
+    });
+    canvas.add(circle);
+    canvas.setActiveObject(circle);
+    canvas.requestRenderAll();
+  }, [activeEditorColor, strokeWidth, isDashed]);
+
+  const addFabricArrow = useCallback((x?: number, y?: number) => {
+    const canvas = fabricCanvasRef.current;
+    if (!canvas) return;
+    const path = new fabric.Path('M 0 0 L 50 0 M 50 0 L 40 -5 M 50 0 L 40 5', {
+      left: x !== undefined ? x : 100,
+      top: y !== undefined ? y : 100,
+      stroke: activeEditorColor,
+      strokeWidth: strokeWidth,
+      strokeDashArray: isDashed ? [10, 5] : null,
+      fill: 'transparent',
+      scaleX: 2,
+      scaleY: 2,
+      cornerColor: '#3b82f6',
+      cornerSize: 10,
+      transparentCorners: false
+    });
+    canvas.add(path);
+    canvas.setActiveObject(path);
+    canvas.requestRenderAll();
+  }, [activeEditorColor, strokeWidth, isDashed]);
+
+  const addFabricText = useCallback((x?: number, y?: number) => {
+    const canvas = fabricCanvasRef.current;
+    if (!canvas) return;
+    const text = new fabric.IText('Novo Texto', {
+      left: x !== undefined ? x : 100,
+      top: y !== undefined ? y : 100,
+      fontFamily: 'Inter, sans-serif',
+      fontSize: 24,
+      fontWeight: 'bold',
+      fill: activeEditorColor,
+      cornerColor: '#3b82f6',
+      cornerSize: 10,
+      transparentCorners: false
+    });
+    canvas.add(text);
+    canvas.setActiveObject(text);
+    canvas.requestRenderAll();
+  }, [activeEditorColor]);
+
   // Initialize Fabric Canvas
   useEffect(() => {
     if (imageEditorUrl && editorCanvasElementRef.current && !fabricCanvasRef.current) {
@@ -238,7 +319,32 @@ export default function App() {
 
       canvas.on('mouse:down', (opt) => {
         const evt = opt.e;
-        if (activeEditorToolRef.current === 'pan' || (!canvas.isDrawingMode && !canvas.getActiveObject() && !canvas.selection)) {
+        const tool = activeEditorToolRef.current;
+
+        // If it's a shape tool, add the shape at the click position
+        if (['rect', 'circle', 'arrow', 'text'].includes(tool)) {
+          // If we clicked on an object, select it and switch to select tool 
+          // to allow moving/editing instead of placing a new one
+          if (opt.target) {
+            canvas.setActiveObject(opt.target);
+            setActiveEditorTool('select');
+            return;
+          }
+          
+          const pointer = canvas.getPointer(evt);
+          if (tool === 'rect') addFabricRect(pointer.x, pointer.y);
+          else if (tool === 'circle') addFabricCircle(pointer.x, pointer.y);
+          else if (tool === 'arrow') addFabricArrow(pointer.x, pointer.y);
+          else if (tool === 'text') addFabricText(pointer.x, pointer.y);
+
+          // Return to selection tool after placing, unless Ctrl/Shift/Meta is pressed
+          if (!evt.ctrlKey && !evt.shiftKey && !evt.metaKey) {
+            setActiveEditorTool('select');
+          }
+          return;
+        }
+
+        if (tool === 'pan' || (!canvas.isDrawingMode && !canvas.getActiveObject() && !canvas.selection)) {
           isDragging = true;
           canvas.selection = false;
           lastPosX = evt.clientX;
@@ -299,7 +405,7 @@ export default function App() {
     
     canvas.forEachObject(obj => {
       obj.selectable = activeEditorTool === 'select';
-      obj.evented = activeEditorTool === 'select';
+      obj.evented = true; // Always allow events to detect targets
     });
 
     if (activeEditorTool !== 'select') {
@@ -369,90 +475,6 @@ export default function App() {
     }
   }, [strokeWidth, isDashed]);
 
-  const addFabricRect = () => {
-    const canvas = fabricCanvasRef.current;
-    if (!canvas) return;
-    const rect = new fabric.Rect({
-      left: 100,
-      top: 100,
-      fill: 'transparent',
-      stroke: activeEditorColor,
-      strokeWidth: strokeWidth,
-      strokeDashArray: isDashed ? [10, 5] : null,
-      width: 100,
-      height: 100,
-      cornerColor: '#3b82f6',
-      cornerSize: 10,
-      transparentCorners: false
-    });
-    canvas.add(rect);
-    canvas.setActiveObject(rect);
-    setActiveEditorTool('select');
-  };
-
-  const addFabricCircle = () => {
-    const canvas = fabricCanvasRef.current;
-    if (!canvas) return;
-    const circle = new fabric.Circle({
-      left: 100,
-      top: 100,
-      fill: 'transparent',
-      stroke: activeEditorColor,
-      strokeWidth: strokeWidth,
-      strokeDashArray: isDashed ? [10, 5] : null,
-      radius: 50,
-      cornerColor: '#3b82f6',
-      cornerSize: 10,
-      transparentCorners: false
-    });
-    canvas.add(circle);
-    canvas.setActiveObject(circle);
-    setActiveEditorTool('select');
-  };
-
-  const addFabricArrow = () => {
-    const canvas = fabricCanvasRef.current;
-    if (!canvas) return;
-    
-    // Create an arrow using a path
-    const path = new fabric.Path('M 0 0 L 50 0 M 50 0 L 40 -5 M 50 0 L 40 5', {
-      left: 100,
-      top: 100,
-      stroke: activeEditorColor,
-      strokeWidth: strokeWidth,
-      strokeDashArray: isDashed ? [10, 5] : null,
-      fill: 'transparent',
-      scaleX: 2,
-      scaleY: 2,
-      cornerColor: '#3b82f6',
-      cornerSize: 10,
-      transparentCorners: false
-    });
-    
-    canvas.add(path);
-    canvas.setActiveObject(path);
-    setActiveEditorTool('select');
-  };
-
-  const addFabricText = () => {
-    const canvas = fabricCanvasRef.current;
-    if (!canvas) return;
-    const text = new fabric.IText('Novo Texto', {
-      left: 100,
-      top: 100,
-      fontFamily: 'Inter, sans-serif',
-      fontSize: 24,
-      fontWeight: 'bold',
-      fill: activeEditorColor,
-      cornerColor: '#3b82f6',
-      cornerSize: 10,
-      transparentCorners: false
-    });
-    canvas.add(text);
-    canvas.setActiveObject(text);
-    setActiveEditorTool('select');
-  };
-
   const handleUndo = () => {
     const canvas = fabricCanvasRef.current;
     if (!canvas) return;
@@ -485,41 +507,60 @@ export default function App() {
 
   // Auth listener
   useEffect(() => {
-    const supabase = getSupabase();
-    
-    // Check current session
-    // Initial session check
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      setIsAuthLoading(false);
-      
-      // If no user is found on initial load, don't force the 5s wait
-      if (!currentUser) {
-        setShowSplash(false);
-      }
-    });
+    let subscription: any = null;
+    let splashTimeout: any = null;
 
-    // Listen for changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      setIsAuthLoading(false);
+    try {
+      const supabase = getSupabase();
       
-      // If user logs out, hide splash if it's showing
-      if (!currentUser) {
+      // Check current session
+      // Initial session check
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+        setIsAuthLoading(false);
+        
+        // If no user is found on initial load, don't force the 5s wait
+        if (!currentUser) {
+          setShowSplash(false);
+        }
+      }).catch(err => {
+        console.error('Session check error:', err);
+        setIsAuthLoading(false);
         setShowSplash(false);
+      });
+
+      // Listen for changes
+      const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+        setIsAuthLoading(false);
+        
+        // If user logs out, hide splash if it's showing
+        if (!currentUser) {
+          setShowSplash(false);
+        }
+      });
+      subscription = data.subscription;
+
+    } catch (err) {
+      console.error('Supabase initialization failed:', err);
+      if (err instanceof Error && err.message.includes('Supabase URL')) {
+        setConfigError(err.message);
       }
-    });
+      setIsAuthLoading(false);
+      setShowSplash(false);
+    }
 
     // Handle splash screen timeout
-    const splashTimeout = setTimeout(() => {
+    splashTimeout = setTimeout(() => {
       setShowSplash(false);
-    }, 5000); // 5 seconds for a premium feel as requested
+      setIsAuthLoading(false); // Force auth loading to false after 5s safety net
+    }, 5000); 
 
     return () => {
-      subscription.unsubscribe();
-      clearTimeout(splashTimeout);
+      if (subscription) subscription.unsubscribe();
+      if (splashTimeout) clearTimeout(splashTimeout);
     };
   }, []);
 
@@ -1245,7 +1286,8 @@ export default function App() {
     const canvas = fabricCanvasRef.current;
     if (!canvas || !imageEditorUrl) return;
 
-    const savingToast = toast.loading('Processando e salvando imagem editada...');
+    // A edição é um salvamento imediato e definitivo
+    const savingToast = toast.loading('Sincronizando marcações com o prontuário...');
     try {
       // Export at high resolution
       const multiplier = Math.max(2, 1 / initialScaleRef.current);
@@ -1258,11 +1300,12 @@ export default function App() {
       const response = await fetch(dataURL);
       const blob = await response.blob();
 
+      const newCaptureId = crypto.randomUUID();
       const newCapture: Capture = {
-        id: crypto.randomUUID(),
+        id: newCaptureId,
         blob,
-        name: `Edição - ${new Date().toLocaleString()}`,
-        notes: 'Imagem editada com marcações clínicas.',
+        name: `Diagnóstico - ${new Date().toLocaleString('pt-BR')}`,
+        notes: 'Imagem trabalhada com anotações e marcações clínicas.',
         timestamp: Date.now(),
         id_session: session?.id,
         id_patient: session?.id_patient || selectedPatient?.id,
@@ -1271,15 +1314,52 @@ export default function App() {
         sync_status: 'pending'
       };
 
+      // 1. Sempre salvar localmente como backup rápido
       await saveCapture(newCapture);
+      
+      // 2. Sincronização IMEDIATA (Regra de Negócio para Edição)
+      // Se houver uma sessão ou paciente, forçamos a sincronização agora
+      const targetPatientId = session?.id_patient || selectedPatient?.id;
+      const targetSessionId = session?.id;
+
+      if (targetSessionId || targetPatientId) {
+        try {
+          const optimizedBlob = await optimizeImage(blob);
+          const storagePath = `${targetSessionId || 'editions'}/${newCaptureId}.jpg`;
+          
+          await uploadImage(optimizedBlob, storagePath);
+          await saveImageRecord({
+            ...newCapture,
+            blob: optimizedBlob,
+            storage_path: storagePath,
+          });
+          
+          // Atualiza status local para sincronizado
+          newCapture.sync_status = 'synced';
+          newCapture.storage_path = storagePath;
+          await updateCapture(newCapture);
+          
+          // Recarregar histórico se o painel estiver aberto para o paciente
+          if (targetPatientId) {
+            const patientHistory = await getPatientHistory(targetPatientId);
+            setHistory(patientHistory);
+          }
+          
+          toast.success('Marcações salvas com sucesso no histórico clínico.', { id: savingToast });
+        } catch (syncErr) {
+          console.error('Error syncing edited image:', syncErr);
+          toast.error('Edição salva na galeria local. Ocorreu um problema ao enviar para a nuvem.', { id: savingToast });
+        }
+      } else {
+        toast.info('Edição salva na galeria. Inicie um atendimento para sincronizar com o prontuário.', { id: savingToast });
+      }
+
       setCaptures(prev => [...prev, newCapture]);
-      toast.dismiss(savingToast);
-      toast.success('Edição salva como nova captura na galeria.');
       setImageEditorUrl(null);
     } catch (err) {
       console.error('Error saving edited capture:', err);
       toast.dismiss(savingToast);
-      toast.error('Erro ao salvar edição.');
+      toast.error('Erro ao processar a salvamento da edição.');
     }
   };
 
@@ -1490,11 +1570,32 @@ export default function App() {
               </div>
               <div className="text-center">
                 <h1 className="text-2xl font-bold text-charcoal-900 tracking-tight">SmileVision Pro</h1>
-                <p className="text-charcoal-500 font-medium">
-                  {authView === 'login' ? 'Gestão Inteligente de Imagens Clínicas' : 
-                   authView === 'signup' ? 'Crie sua conta profissional' : 
-                   'Recuperação de Acesso'}
-                </p>
+                {configError ? (
+                  <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-xl flex flex-col gap-2 text-amber-700">
+                    <div className="flex items-center gap-3">
+                      <AlertCircle size={20} className="shrink-0" />
+                      <p className="text-xs font-bold leading-tight text-left">
+                        Configuração Necessária
+                      </p>
+                    </div>
+                    <p className="text-[10px] leading-relaxed text-left opacity-90">
+                      O erro <strong>{configError}</strong> indica que o app não consegue conectar ao banco. 
+                      Verifique se as variáveis no Vercel começam com <strong>VITE_</strong> (ex: VITE_SUPABASE_URL).
+                    </p>
+                    <button 
+                      onClick={() => window.location.reload()}
+                      className="mt-1 py-2 bg-amber-200/50 hover:bg-amber-200 rounded-lg text-[10px] font-bold transition-colors uppercase tracking-wider"
+                    >
+                      Tentar Novamente
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-charcoal-500 font-medium">
+                    {authView === 'login' ? 'Gestão Inteligente de Imagens Clínicas' : 
+                     authView === 'signup' ? 'Crie sua conta profissional' : 
+                     'Recuperação de Acesso'}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -1859,7 +1960,8 @@ export default function App() {
                         ) : (
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                             {history.map((item) => {
-                              const imageUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/captures/${item.storage_path}`;
+                              const baseUrl = import.meta.env.VITE_SUPABASE_URL?.trim();
+                              const imageUrl = `${baseUrl}/storage/v1/object/public/captures/${item.storage_path}`;
                               return (
                                 <div key={item.id} className="bg-white border border-charcoal-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all group">
                                   <div className="aspect-video relative overflow-hidden">
@@ -2906,7 +3008,8 @@ export default function App() {
                         {compareSelection.map((id, index) => {
                           const item = history.find(h => h.id === id);
                           if (!item) return null;
-                          const imageUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/captures/${item.storage_path}`;
+                          const baseUrl = import.meta.env.VITE_SUPABASE_URL?.trim();
+                          const imageUrl = `${baseUrl}/storage/v1/object/public/captures/${item.storage_path}`;
                           return (
                             <div key={id} className="flex flex-col gap-2">
                               <p className="text-xs font-bold text-charcoal-500 uppercase tracking-widest text-center">
@@ -2946,7 +3049,8 @@ export default function App() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         {history.map((item) => {
                           const isSelected = compareSelection.includes(item.id);
-                          const imageUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/captures/${item.storage_path}`;
+                          const baseUrl = import.meta.env.VITE_SUPABASE_URL?.trim();
+                          const imageUrl = `${baseUrl}/storage/v1/object/public/captures/${item.storage_path}`;
                           return (
                             <div 
                               key={item.id} 
@@ -2993,7 +3097,8 @@ export default function App() {
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     {history.map((item) => {
-                      const imageUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/captures/${item.storage_path}`;
+                      const baseUrl = import.meta.env.VITE_SUPABASE_URL?.trim();
+                      const imageUrl = `${baseUrl}/storage/v1/object/public/captures/${item.storage_path}`;
                       return (
                         <div key={item.id} className="group bg-white rounded-2xl border border-charcoal-200 overflow-hidden hover:shadow-lg transition-all">
                           <div className="aspect-video relative bg-charcoal-100">
@@ -3416,16 +3521,121 @@ export default function App() {
               exit={{ scale: 0.95, opacity: 0 }}
               className="w-full h-full md:h-[98vh] md:max-w-[98vw] bg-white md:rounded-[32px] shadow-2xl overflow-hidden flex flex-col"
             >
-              <div className="p-3 md:p-4 border-b border-charcoal-100 flex items-center justify-between bg-white/50">
+              <div className="p-3 md:p-4 border-b border-charcoal-100 flex items-center justify-between bg-white/50 relative z-40">
                 <div className="flex items-center gap-3">
                   <div className="bg-primary-500 p-1.5 rounded-xl text-white">
                     <Edit3 size={20} />
                   </div>
-                  <div>
-                    <h2 className="text-base md:text-lg font-bold text-charcoal-900 tracking-tight">Editor de Marcações</h2>
-                    <p className="text-charcoal-500 text-[10px] uppercase font-bold tracking-widest">Enriquecimento de Diagnóstico</p>
+                  <div className="hidden lg:block">
+                    <h2 className="text-base font-bold text-charcoal-900 tracking-tight">Editor de Marcações</h2>
+                    <p className="text-charcoal-500 text-[9px] uppercase font-bold tracking-widest leading-none">Enriquecimento de Diagnóstico</p>
                   </div>
                 </div>
+
+                {/* Main Tool Bar (Moved to Top) */}
+                <div className="flex items-center gap-1 p-1 bg-charcoal-100/50 backdrop-blur-sm rounded-xl border border-charcoal-200/50 shadow-sm">
+                  <button 
+                    onClick={() => setActiveEditorTool('select')}
+                    className={cn(
+                      "p-1.5 rounded-lg transition-all",
+                      activeEditorTool === 'select' ? "bg-primary-500 text-white shadow-md scale-105" : "text-charcoal-400 hover:bg-white hover:text-charcoal-600"
+                    )}
+                    title="Selecionar (V)"
+                  >
+                    <MousePointer2 size={16} />
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setActiveEditorTool('rect');
+                    }}
+                    className={cn(
+                      "p-1.5 rounded-lg transition-all",
+                      activeEditorTool === 'rect' ? "bg-primary-500 text-white shadow-md scale-105" : "text-charcoal-400 hover:bg-white hover:text-charcoal-600"
+                    )}
+                    title="Retângulo (R)"
+                  >
+                    <Layers size={16} />
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setActiveEditorTool('circle');
+                    }}
+                    className={cn(
+                      "p-1.5 rounded-lg transition-all",
+                      activeEditorTool === 'circle' ? "bg-primary-500 text-white shadow-md scale-105" : "text-charcoal-400 hover:bg-white hover:text-charcoal-600"
+                    )}
+                    title="Círculo (C)"
+                  >
+                    <Circle size={16} />
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setActiveEditorTool('arrow');
+                    }}
+                    className={cn(
+                      "p-1.5 rounded-lg transition-all",
+                      activeEditorTool === 'arrow' ? "bg-primary-500 text-white shadow-md scale-105" : "text-charcoal-400 hover:bg-white hover:text-charcoal-600"
+                    )}
+                    title="Seta (A)"
+                  >
+                    <ArrowUpRight size={16} />
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setActiveEditorTool('text');
+                    }}
+                    className={cn(
+                      "p-1.5 rounded-lg transition-all",
+                      activeEditorTool === 'text' ? "bg-primary-500 text-white shadow-md scale-105" : "text-charcoal-400 hover:bg-white hover:text-charcoal-600"
+                    )}
+                    title="Texto (T)"
+                  >
+                    <Type size={16} />
+                  </button>
+                  <div className="w-[1px] h-5 bg-charcoal-200 mx-0.5" />
+                  <button 
+                    onClick={() => setActiveEditorTool('pan')}
+                    className={cn(
+                      "p-1.5 rounded-lg transition-all",
+                      activeEditorTool === 'pan' ? "bg-primary-500 text-white shadow-md scale-105" : "text-charcoal-400 hover:bg-white hover:text-charcoal-600"
+                    )}
+                    title="Mover (H)"
+                  >
+                    <Hand size={16} />
+                  </button>
+                  <div className="w-[1px] h-5 bg-charcoal-200 mx-0.5" />
+                  <button 
+                    onClick={handleUndo}
+                    className="p-1.5 rounded-lg text-charcoal-400 hover:bg-white hover:text-charcoal-600 transition-all"
+                    title="Desfazer (Ctrl+Z)"
+                  >
+                    <Undo size={16} />
+                  </button>
+                  <button 
+                    onClick={handleClearAll}
+                    className="p-1.5 rounded-lg text-charcoal-400 hover:bg-white hover:text-red-500 transition-all"
+                    title="Limpar Tudo"
+                  >
+                    <RotateCcw size={16} />
+                  </button>
+                  <button 
+                    onClick={() => {
+                      const canvas = fabricCanvasRef.current;
+                      if (canvas) {
+                        const active = canvas.getActiveObject();
+                        if (active) {
+                          canvas.remove(active);
+                          canvas.requestRenderAll();
+                        }
+                      }
+                    }}
+                    className="p-1.5 rounded-lg text-charcoal-400 hover:bg-white hover:text-red-500 transition-all"
+                    title="Excluir (Del)"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+
                 <div className="flex items-center gap-2">
                   <button 
                     onClick={() => setImageEditorUrl(null)}
@@ -3444,130 +3654,22 @@ export default function App() {
               </div>
 
               <div className="flex-1 relative overflow-hidden bg-white">
-                {/* Floating Action Sidebar (Left) */}
+                {/* Floating Action Sidebar (Left) - Colors Only */}
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 z-30 w-12 bg-white/80 backdrop-blur-md border border-charcoal-200 rounded-2xl flex flex-col items-center py-4 gap-4 shadow-xl">
                   {/* Color Palette in Sidebar */}
-                  <div className="flex flex-col gap-1.5 p-1 bg-white rounded-xl border border-charcoal-100 shadow-sm">
+                  <div className="flex flex-col gap-2 p-1">
                     {['#ef4444', '#1DB954', '#00C2A8', '#eab308', '#ffffff', '#000000'].map(color => (
                       <button
                         key={color}
                         onClick={() => setActiveEditorColor(color)}
                         className={cn(
-                          "w-7 h-7 rounded-full border-2 transition-all flex-shrink-0",
-                          activeEditorColor === color ? "border-primary-500 scale-110 shadow-md" : "border-transparent hover:scale-105"
+                          "w-8 h-8 rounded-full border-2 transition-all flex-shrink-0 shadow-sm",
+                          activeEditorColor === color ? "border-primary-500 scale-110 ring-2 ring-primary-500/20" : "border-white hover:scale-105"
                         )}
                         style={{ backgroundColor: color }}
                         title={`Cor: ${color}`}
                       />
                     ))}
-                  </div>
-
-                  <div className="w-8 h-[1px] bg-charcoal-100" />
-
-                  <div className="flex flex-col gap-2">
-                    <button 
-                      onClick={() => setActiveEditorTool('select')}
-                      className={cn(
-                        "p-2.5 rounded-xl transition-all",
-                        activeEditorTool === 'select' ? "bg-primary-500 text-white shadow-lg shadow-primary-500/20" : "text-charcoal-400 hover:bg-charcoal-200"
-                      )}
-                      title="Selecionar (V)"
-                    >
-                      <MousePointer2 size={20} />
-                    </button>
-                    <button 
-                      onClick={() => {
-                        setActiveEditorTool('rect');
-                      }}
-                      className={cn(
-                        "p-2.5 rounded-xl transition-all",
-                        activeEditorTool === 'rect' ? "bg-primary-500 text-white shadow-lg shadow-primary-500/20" : "text-charcoal-400 hover:bg-charcoal-200"
-                      )}
-                      title="Retângulo (R)"
-                    >
-                      <Layers size={20} />
-                    </button>
-                    <button 
-                      onClick={() => {
-                        setActiveEditorTool('circle');
-                      }}
-                      className={cn(
-                        "p-2.5 rounded-xl transition-all",
-                        activeEditorTool === 'circle' ? "bg-primary-500 text-white shadow-lg shadow-primary-500/20" : "text-charcoal-400 hover:bg-charcoal-200"
-                      )}
-                      title="Círculo (C)"
-                    >
-                      <Circle size={20} />
-                    </button>
-                    <button 
-                      onClick={() => {
-                        setActiveEditorTool('arrow');
-                      }}
-                      className={cn(
-                        "p-2.5 rounded-xl transition-all",
-                        activeEditorTool === 'arrow' ? "bg-primary-500 text-white shadow-lg shadow-primary-500/20" : "text-charcoal-400 hover:bg-charcoal-200"
-                      )}
-                      title="Seta (A)"
-                    >
-                      <ArrowUpRight size={20} />
-                    </button>
-                    <button 
-                      onClick={() => {
-                        setActiveEditorTool('text');
-                      }}
-                      className={cn(
-                        "p-2.5 rounded-xl transition-all",
-                        activeEditorTool === 'text' ? "bg-primary-500 text-white shadow-lg shadow-primary-500/20" : "text-charcoal-400 hover:bg-charcoal-200"
-                      )}
-                      title="Texto (T)"
-                    >
-                      <Type size={20} />
-                    </button>
-                    <button 
-                      onClick={() => setActiveEditorTool('pan')}
-                      className={cn(
-                        "p-2.5 rounded-xl transition-all",
-                        activeEditorTool === 'pan' ? "bg-primary-500 text-white shadow-lg shadow-primary-500/20" : "text-charcoal-400 hover:bg-charcoal-200"
-                      )}
-                      title="Mover (H)"
-                    >
-                      <Hand size={20} />
-                    </button>
-                  </div>
-
-                  <div className="w-8 h-[1px] bg-charcoal-100" />
-
-                  <div className="flex flex-col gap-2">
-                    <button 
-                      onClick={handleUndo}
-                      className="p-2.5 rounded-xl text-charcoal-400 hover:bg-charcoal-200 transition-all"
-                      title="Desfazer (Ctrl+Z)"
-                    >
-                      <Undo size={20} />
-                    </button>
-                    <button 
-                      onClick={handleClearAll}
-                      className="p-2.5 rounded-xl text-charcoal-400 hover:bg-charcoal-200 transition-all"
-                      title="Limpar Tudo"
-                    >
-                      <RotateCcw size={20} />
-                    </button>
-                    <button 
-                      onClick={() => {
-                        const canvas = fabricCanvasRef.current;
-                        if (canvas) {
-                          const active = canvas.getActiveObject();
-                          if (active) {
-                            canvas.remove(active);
-                            canvas.requestRenderAll();
-                          }
-                        }
-                      }}
-                      className="p-2.5 rounded-xl text-charcoal-400 hover:bg-red-50 hover:text-red-500 transition-all"
-                      title="Excluir (Del)"
-                    >
-                      <Trash2 size={20} />
-                    </button>
                   </div>
                 </div>
 

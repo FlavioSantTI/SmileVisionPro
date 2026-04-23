@@ -1,19 +1,27 @@
-# SmileVision Pro - Inteligência Artificial Odontológica
+# SmileVision Pro - Versão 2.0
 
 SmileVision Pro é uma plataforma avançada de gestão de imagens clínicas e diagnóstico odontológico, projetada para oferecer precisão, segurança e uma experiência de usuário premium.
 
-## 🚀 Novidades da Versão Recente
+## 🚀 Novidades da Versão 2.0
 
-Nesta atualização, focamos em elevar a percepção de marca e a fluidez da experiência inicial do usuário.
+Nesta versão, transformamos o SmileVision em uma ferramenta de diagnóstico completa com sincronização inteligente e edição pro-grade.
 
-### 💎 Experiência de Inicialização Premium (Splash Screen)
-Implementamos um novo sistema de inicialização com foco em "Fortaleza e Tecnologia":
-- **Logo Imponente:** Aumento significativo no destaque da marca, transmitindo solidez e confiança.
-- **Animação de Foco Progressivo:** A logo emerge de um estado de desfoque e escala reduzida, simbolizando a clareza do diagnóstico.
-- **Sequência de Mensagens Inteligente:** O sistema agora guia o usuário através de uma sequência de estados ("Iniciando Sistema" -> "Verificando Autenticação"), eliminando telas de carregamento genéricas.
-- **Transições Fluídas:** Integração total com o fluxo de login e cadastro, garantindo que a primeira interação com o software seja memorável e profissional.
-- **Duração Otimizada:** Exposição de 5 segundos quando o usuário está autenticado para garantir a fixação da marca; para usuários não autenticados, o sistema libera a tela de login instantaneamente após a verificação.
-- **Totalmente Responsivo:** Otimizado para dispositivos móveis com suporte a `100dvh`, garantindo uma experiência perfeita em qualquer tamanho de tela e evitando cortes ou saltos de interface.
+### 🎨 Editor de Imagens Clínicas Pro
+- **Interface Otimizada:** Barra de ferramentas flutuante na parte superior e paleta de cores lateral para máxima produtividade.
+- **Inserção Facilitada:** Adicione formas (setas, círculos, retângulos) e textos com um único clique.
+- **Fluxo de Trabalho Fluído:** Auto-seleção de elementos após a criação e suporte a teclas de atalho (Ctrl/Shift para manipulação).
+- **Tratamento de Imagem:** Filtros avançados para análise de detalhes radiográficos e fotográficos.
+
+### ☁️ Sincronização Inteligente Imediata
+- **Salvamento Direto:** Edições são tratadas como documentos clínicos definitivos e sincronizadas instantaneamente com a nuvem.
+- **Identificação Automática:** Registros de edição são nomeados como "Diagnóstico", facilitando a rastreabilidade no prontuário.
+- **Histórico em Tempo Real:** O prontuário do paciente é atualizado automaticamente assim que a edição é salva.
+- **Segurança Redundante:** Backup local automático antes do upload para garantir zero perda de dados.
+
+### 💎 Experiência Premium (Splash Screen & UI)
+- **Marca Imponente:** Splash screen redesenhada com animações de foco progressivo.
+- **Sequência de Boot Inteligente:** Feedback visual do status do sistema durante a inicialização.
+- **Ajustes de Infraestrutura:** Tratamento defensivo de conexões com o banco de dados e resolução de nomes.
 
 ## 🛠️ Tecnologias Utilizadas
 - **React 18+** com TypeScript
