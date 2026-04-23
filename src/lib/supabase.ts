@@ -114,12 +114,17 @@ export async function searchPatients(query: string, clinic?: any) {
   const supabase = getSupabase();
   
   const searchStr = query.trim();
+  if (!searchStr) return [];
+
+  console.time(`searchPatients-${searchStr}`);
+  console.log('Searching patients with query:', searchStr, 'for clinic:', clinic?.id);
   
   // Try searching in the specific clinic first
+  // We'll try to select everything first to see what we get if there's an error
   let q = supabase
     .from('patients')
-    .select('id, name, nickname, document_id, tenant_id, is_active, mobile_phone, email')
-    .or(`name.ilike.%${searchStr}%,nickname.ilike.%${searchStr}%`);
+    .select('*')
+    .ilike('name', `%${searchStr}%`);
 
   if (clinic && clinic.id) {
     q = q.eq('tenant_id', clinic.id);
@@ -127,26 +132,48 @@ export async function searchPatients(query: string, clinic?: any) {
 
   let { data, error } = await q.limit(20); 
   
-  // Fallback: If no results in the clinic, try a global search to help diagnose
-  if (!error && (!data || data.length === 0) && clinic && clinic.id) {
-    const { data: globalData, error: globalError } = await supabase
-      .from('patients')
-      .select('id, name, nickname, document_id, tenant_id, is_active, mobile_phone, email')
-      .or(`name.ilike.%${searchStr}%,nickname.ilike.%${searchStr}%`)
-      .limit(10);
-      
-    if (!globalError && globalData && globalData.length > 0) {
-      // Mark these as "from other clinics" if needed, but for now just show them
-      data = globalData;
+  if (error) {
+    console.error('Error in primary patient search:', error);
+    // If it's a column error, maybe 'name' doesn't exist? Try 'nome' or 'nome_completo'
+    if (error.message.includes('column "name" does not exist')) {
+       console.log('Column "name" not found, trying "nome_completo"...');
+       let q2 = supabase.from('patients').select('*').ilike('nome_completo', `%${searchStr}%`);
+       if (clinic && clinic.id) q2 = q2.eq('tenant_id', clinic.id);
+       const { data: d2, error: e2 } = await q2.limit(20);
+       data = d2;
+       error = e2;
     }
   }
 
-  if (error) {
-    console.error('Error searching patients:', error);
-    return [];
+  // Fallback: If no results in the clinic, try a global search to help diagnose
+  if (!error && (!data || data.length === 0) && clinic && clinic.id) {
+    console.log('No results in clinic, trying global search (ignoring tenant_id)...');
+    const { data: globalData, error: globalError } = await supabase
+      .from('patients')
+      .select('*')
+      .ilike('name', `%${searchStr}%`)
+      .limit(10);
+      
+    if (!globalError && globalData && globalData.length > 0) {
+      console.log('Found results in global search:', globalData.length);
+      data = globalData;
+    } else if (globalError) {
+      // Try nome_completo global
+      const { data: gd2 } = await supabase.from('patients').select('*').ilike('nome_completo', `%${searchStr}%`).limit(10);
+      if (gd2 && gd2.length > 0) data = gd2;
+    }
   }
+
+  console.timeEnd(`searchPatients-${searchStr}`);
   
-  return data || [];
+  // Map data to ensure it has a 'name' property for the UI
+  const mappedData = (data || []).map((p: any) => ({
+    ...p,
+    name: p.name || p.nome_completo || p.nome || 'Sem Nome'
+  }));
+
+  console.log('Search results count:', mappedData.length);
+  return mappedData;
 }
 
 export async function createPatient(patientData: any) {
@@ -250,21 +277,38 @@ export async function getPatientHistory(patientId: string) {
   await ensureAuth();
   const supabase = getSupabase();
   
+  console.time(`getPatientHistory-${patientId}`);
   console.log('Fetching history for patient:', patientId);
   
   // Busca imagens onde o id_patient está dentro do JSONB metadata
   // Usando .contains para maior compatibilidade com JSONB
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('images')
     .select('*')
     .contains('metadata', { id_patient: patientId })
     .order('created_at', { ascending: false });
     
   if (error) {
-    console.error('Error fetching patient history:', error);
-    return [];
+    console.error('Error fetching patient history with .contains:', error);
+    
+    // Fallback: Try searching by id_patient if it's a top-level column
+    console.log('Trying fallback search by id_patient column...');
+    const { data: d2, error: e2 } = await supabase
+      .from('images')
+      .select('*')
+      .eq('id_patient', patientId)
+      .order('created_at', { ascending: false });
+      
+    if (!e2 && d2) {
+      data = d2;
+      error = null;
+    } else {
+       // Try metadata ->> id_patient (Postgres JSON operator) if supported via raw filter
+       // but .contains is usually better. 
+    }
   }
   
   console.log('History data found:', data?.length || 0, 'records');
+  console.timeEnd(`getPatientHistory-${patientId}`);
   return data || [];
 }

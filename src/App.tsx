@@ -28,6 +28,7 @@ import {
   LogOut,
   ZoomIn,
   ZoomOut,
+  Settings2,
   Hand,
   Circle,
   Type,
@@ -41,7 +42,16 @@ import {
   ChevronLeft,
   Layers,
   Database,
-  Mail
+  Mail,
+  History,
+  Users,
+  BarChart3,
+  ClipboardList,
+  LayoutDashboard,
+  Sun,
+  Contrast,
+  Droplets,
+  RotateCcw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { jsPDF } from 'jspdf';
@@ -151,6 +161,7 @@ export default function App() {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [showSplash, setShowSplash] = useState(true);
   const [authView, setAuthView] = useState<'login' | 'signup' | 'forgot'>('login');
+  const [isCheckInOpen, setIsCheckInOpen] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -520,6 +531,9 @@ export default function App() {
       try {
         const data = await getClinics();
         setClinics(data);
+        if (data && data.length === 1) {
+          setSelectedClinic(data[0]);
+        }
         setConfigError(null);
       } catch (err) {
         console.error('Error loading clinics:', err);
@@ -605,7 +619,7 @@ export default function App() {
       try {
         patientToUse = await createPatient({ 
           name: patientSearch,
-          clinic_id: selectedClinic.id
+          tenant_id: selectedClinic.id
         });
         setSelectedPatient(patientToUse);
       } catch (err) {
@@ -625,6 +639,7 @@ export default function App() {
     try {
       const newSession = await createSession(selectedClinic.id, selectedDentist.id, patientToUse.id);
       setSession(newSession);
+      setIsCheckInOpen(false);
       
       // Load history for the selected patient
       setIsLoadingHistory(true);
@@ -1418,6 +1433,31 @@ export default function App() {
 
   const sessionCaptures = selectedPatient ? captures.filter(c => c.id_patient === selectedPatient.id) : [];
 
+  const DashboardCard = ({ icon, title, description, onClick, color, isPrimary }: any) => (
+    <motion.button
+      whileHover={{ y: -5, scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      onClick={onClick}
+      className={cn(
+        "relative overflow-hidden rounded-[24px] p-6 text-left shadow-md border border-charcoal-100 transition-all flex flex-col justify-between min-h-[180px]",
+        color
+      )}
+    >
+      <div className={cn(
+        "w-10 h-10 rounded-xl flex items-center justify-center mb-4",
+        isPrimary ? "bg-white/20 text-white" : "bg-charcoal-50 text-primary-500"
+      )}>
+        {icon}
+      </div>
+      <div>
+        <h3 className={cn("text-lg font-bold mb-1", isPrimary ? "text-white" : "text-charcoal-900")}>{title}</h3>
+        <p className={cn("text-xs font-medium leading-relaxed", isPrimary ? "text-white/80" : "text-charcoal-500")}>
+          {description}
+        </p>
+      </div>
+    </motion.button>
+  );
+
   if ((isAuthLoading || showSplash) && !user) {
     return (
       <AnimatePresence>
@@ -1583,366 +1623,568 @@ export default function App() {
       </AnimatePresence>
       <Toaster position="top-center" richColors />
       
-      {/* Check-in Overlay */}
-      <AnimatePresence>
-        {!session && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-charcoal-900/90 backdrop-blur-md flex items-center justify-center p-6"
-          >
-            <motion.div 
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              className="w-full max-w-2xl bg-white rounded-[32px] shadow-2xl"
-            >
-              <div className="p-8 border-b border-charcoal-100 bg-white/50 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div>
-                    <h2 className="text-2xl font-bold text-charcoal-900 tracking-tight">Identificação do atendimento</h2>
-                    <p className="text-charcoal-500 text-sm">Selecione a unidade, o profissional e o paciente para registrar o atendimento.</p>
-                  </div>
-                </div>
+      {/* Dashboard or Main Content */}
+      {!session ? (
+        <>
+          <div className="flex-1 bg-charcoal-50 relative overflow-hidden flex flex-col">
+            {/* Background Decorative Elements */}
+            <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+              <div className="absolute -top-24 -left-24 w-[500px] h-[500px] bg-primary-500/5 rounded-full blur-[120px]" />
+              <div className="absolute -bottom-24 -right-24 w-[500px] h-[500px] bg-accent-500/5 rounded-full blur-[120px]" />
+            </div>
 
-                {/* User Info and Logout in Overlay */}
-                <div className="flex items-center gap-3 pl-4 border-l border-charcoal-200">
-                  <div className="flex flex-col items-end">
-                    <span className="text-xs font-bold text-charcoal-500 uppercase tracking-widest leading-none mb-1">Usuário</span>
-                    <span className="text-xs font-bold text-charcoal-700 truncate max-w-[120px]">
-                      {user?.user_metadata?.display_name || user?.email?.split('@')[0]}
-                    </span>
-                  </div>
+            {/* Dashboard Header */}
+            <header className="h-20 bg-white/80 backdrop-blur-md border-b border-charcoal-100 px-8 flex items-center justify-between sticky top-0 z-10">
+              <div className="flex items-center gap-3">
+                <div className="bg-white p-1.5 rounded-xl shadow-sm border border-charcoal-100">
+                  <Logo size={32} />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-charcoal-900 tracking-tight leading-none">SmileVision Pro</h1>
+                  <p className="text-[10px] font-bold text-primary-500 uppercase tracking-[0.2em] mt-1">Command Center</p>
                 </div>
               </div>
 
-              {configError ? (
-                <div className="p-12 flex flex-col items-center text-center gap-4">
-                  <div className="p-4 bg-amber-50 text-amber-600 rounded-full">
-                    <AlertCircle size={48} />
-                  </div>
-                  <div className="max-w-md">
-                    <h3 className="text-lg font-bold text-charcoal-900 mb-2">Configuração Necessária</h3>
-                    <p className="text-charcoal-500 text-sm leading-relaxed">
-                      Para utilizar as funcionalidades de nuvem, você precisa configurar as credenciais do Supabase no menu de <strong>Settings</strong> do AI Studio.
-                    </p>
-                    <div className="mt-6 p-4 bg-white rounded-xl border border-charcoal-200 text-left">
-                      <p className="text-xs font-bold text-charcoal-500 uppercase tracking-widest mb-2">Variáveis Requeridas:</p>
-                      <code className="text-xs text-charcoal-600 block bg-white p-2 rounded border border-charcoal-100 mb-1">VITE_SUPABASE_URL</code>
-                      <code className="text-xs text-charcoal-600 block bg-white p-2 rounded border border-charcoal-100">VITE_SUPABASE_ANON_KEY</code>
-                    </div>
-                  </div>
+              <div className="flex items-center gap-6">
+                <div className="flex flex-col items-end">
+                  <span className="text-[10px] font-bold text-charcoal-400 uppercase tracking-widest leading-none mb-1">Profissional</span>
+                  <span className="text-sm font-bold text-charcoal-700">
+                    {user?.user_metadata?.display_name || user?.email?.split('@')[0]}
+                  </span>
                 </div>
-              ) : isLoadingClinics && clinics.length === 0 ? (
-                <div className="p-20 flex flex-col items-center justify-center gap-4">
-                  <Loader2 size={48} className="text-primary-500 animate-spin" />
-                  <p className="text-charcoal-500 font-medium">Carregando unidades disponíveis...</p>
+                <button 
+                  onClick={handleSignOut}
+                  className="p-2.5 text-charcoal-400 hover:text-red-500 hover:bg-red-50 transition-all rounded-xl"
+                  title="Sair"
+                >
+                  <LogOut size={20} />
+                </button>
+              </div>
+            </header>
+
+            {/* Dashboard Content */}
+            <main className="flex-1 overflow-y-auto p-8 md:p-12 lg:p-16">
+              <div className="max-w-7xl mx-auto">
+                <div className="mb-12">
+                  <h2 className="text-3xl font-bold text-charcoal-900 tracking-tight mb-2">Bem-vindo de volta</h2>
+                  <p className="text-charcoal-500 font-medium">O que deseja realizar hoje na plataforma?</p>
                 </div>
-              ) : (
-                <>
-                  <div className="p-8 flex flex-col gap-8">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      {/* Clinic Selection */}
-                      <div className="flex flex-col gap-2">
-                        <label className="text-xs font-bold text-charcoal-500 uppercase tracking-widest flex items-center gap-2">
-                          <Building2 size={12} /> Unidade
-                        </label>
-                        <div className="relative">
-                          <select 
-                            className="w-full px-4 py-3 bg-white border border-charcoal-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500/20 transition-all font-medium disabled:opacity-50"
-                            disabled={isLoadingClinics}
-                            value={selectedClinic?.id || ''}
-                            onChange={(e) => setSelectedClinic(clinics.find(c => c.id === e.target.value) || null)}
-                          >
-                            <option value="">{isLoadingClinics ? 'Carregando unidades...' : 'Selecione a unidade...'}</option>
-                            {clinics.map(c => (
-                              <option key={c.id} value={c.id}>
-                                {(c as any).unidade || (c as any).name || `Unidade ${c.id}`}
-                              </option>
-                            ))}
-                          </select>
-                          {isLoadingClinics && (
-                            <div className="absolute right-10 top-1/2 -translate-y-1/2">
-                              <Loader2 size={16} className="text-primary-500 animate-spin" />
-                            </div>
-                          )}
-                        </div>
-                      </div>
 
-                      {/* Dentist Selection */}
-                      <div className="flex flex-col gap-2">
-                        <label className="text-xs font-bold text-charcoal-500 uppercase tracking-widest flex items-center gap-2">
-                          <Stethoscope size={12} /> Dentista Executor
-                        </label>
-                        <div className="relative">
-                          <select 
-                            className="w-full px-4 py-3 bg-white border border-charcoal-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500/20 transition-all font-medium disabled:opacity-50"
-                            disabled={!selectedClinic || isLoadingDentists}
-                            value={selectedDentist?.id || ''}
-                            onChange={(e) => setSelectedDentist(dentists.find(d => d.id === e.target.value) || null)}
-                          >
-                            <option value="">{isLoadingDentists ? 'Carregando dentistas...' : 'Selecione o dentista...'}</option>
-                            {dentists.map(d => (
-                              <option key={d.id} value={d.id}>
-                                {(d as any).nome_completo || (d as any).nome || (d as any).name || `Dentista ${d.id}`}
-                              </option>
-                            ))}
-                          </select>
-                          {isLoadingDentists && (
-                            <div className="absolute right-10 top-1/2 -translate-y-1/2">
-                              <Loader2 size={16} className="text-primary-500 animate-spin" />
-                            </div>
-                          )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {/* Iniciar Atendimento */}
+                  <DashboardCard 
+                    icon={<Play size={24} />}
+                    title="Iniciar Atendimento"
+                    description="Comece uma nova sessão de captura e diagnósticos em tempo real."
+                    onClick={() => setIsCheckInOpen(true)}
+                    color="bg-primary-500 text-white"
+                    isPrimary
+                  />
+
+                  {/* Histórico de Capturas */}
+                  <DashboardCard 
+                    icon={<History size={24} />}
+                    title="Histórico de Capturas"
+                    description="Acesse exames e anotações de atendimentos anteriores."
+                    onClick={() => setIsHistoryOpen(true)}
+                    color="bg-white"
+                  />
+
+                  {/* Relatório Clínico */}
+                  <DashboardCard 
+                    icon={<ClipboardList size={24} />}
+                    title="Relatório Clínico"
+                    description="Gere documentos profissionais em PDF com imagens e anotações."
+                    onClick={() => toast.info('Módulo de Relatórios em desenvolvimento')}
+                    color="bg-white"
+                  />
+
+                  {/* Cadastro de Pacientes */}
+                  <DashboardCard 
+                    icon={<Users size={24} />}
+                    title="Cadastro de Pacientes"
+                    description="Gerencie sua base de dados de pacientes de forma segura."
+                    onClick={() => {
+                      setPatientSearch('');
+                      setIsCreatingPatient(true);
+                    }}
+                    color="bg-white"
+                  />
+
+                  {/* Relatórios Gerenciais */}
+                  <DashboardCard 
+                    icon={<BarChart3 size={24} />}
+                    title="Relatórios Gerenciais"
+                    description="Acompanhe a produtividade e métricas da sua clínica."
+                    onClick={() => toast.info('Módulo Gerencial em desenvolvimento')}
+                    color="bg-white"
+                  />
+                </div>
+              </div>
+            </main>
+
+            <footer className="p-6 text-center">
+              <p className="text-[10px] font-bold text-charcoal-400 uppercase tracking-[0.3em]">
+                SmileVision Pro &copy; 2026 - Inteligência Artificial Odontológica
+              </p>
+            </footer>
+          </div>
+
+          {/* Global History Overlay */}
+          <AnimatePresence>
+            {isHistoryOpen && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[200] bg-charcoal-900/90 backdrop-blur-md flex items-center justify-center p-6"
+              >
+                <motion.div 
+                  initial={{ scale: 0.9, y: 20 }}
+                  animate={{ scale: 1, y: 0 }}
+                  className="w-full max-w-4xl h-[80vh] bg-white rounded-[32px] shadow-2xl flex flex-col overflow-hidden"
+                >
+                  <div className="p-8 border-b border-charcoal-100 flex items-center justify-between bg-charcoal-50/50">
+                    <div>
+                      <h2 className="text-2xl font-bold text-charcoal-900 flex items-center gap-3">
+                        <div className="p-2 bg-primary-500 rounded-xl text-white">
+                          <History size={24} />
                         </div>
-                      </div>
+                        Histórico de Capturas
+                      </h2>
+                      <p className="text-charcoal-500 font-medium mt-1">Consulte registros e exames anteriores</p>
                     </div>
+                    <button 
+                      onClick={() => {
+                        setIsHistoryOpen(false);
+                        setSelectedPatient(null);
+                        setHistory([]);
+                      }}
+                      className="p-3 hover:bg-charcoal-100 rounded-2xl text-charcoal-400 transition-colors"
+                    >
+                      <X size={24} />
+                    </button>
+                  </div>
 
-                    {/* Patient Search - Only show after Clinic and Dentist are selected */}
-                    <AnimatePresence>
-                      {selectedClinic && selectedDentist && (
-                        <motion.div 
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          className="flex flex-col gap-2 relative"
-                        >
-                          <div className="h-[1px] bg-charcoal-100 my-4" />
-                          
-                          <label className="text-xs font-bold text-charcoal-500 uppercase tracking-widest flex items-center gap-2">
-                            <User size={12} /> Paciente
-                          </label>
-                          <div className="relative">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-charcoal-400" size={16} />
-                            <input 
-                              type="text"
-                              className="w-full pl-12 pr-12 py-4 bg-white border border-charcoal-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500/20 transition-all font-medium text-lg"
-                              placeholder="Buscar por nome..."
-                              value={patientSearch}
-                              onChange={(e) => {
-                                setPatientSearch(e.target.value);
-                                // Clear selected patient if user starts typing something else
-                                if (selectedPatient) {
-                                  const currentName = selectedPatient.name;
-                                  if (e.target.value !== currentName) {
-                                    setSelectedPatient(null);
+                  <div className="flex-1 overflow-y-auto p-8">
+                    {!selectedPatient ? (
+                      <div className="max-w-xl mx-auto py-12">
+                        <div className="relative mb-8">
+                          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-charcoal-400" size={20} />
+                          <input 
+                            type="text"
+                            placeholder="Buscar paciente por nome..."
+                            value={patientSearch}
+                            onChange={(e) => setPatientSearch(e.target.value)}
+                            className="w-full pl-14 pr-6 py-5 bg-charcoal-50 border-2 border-transparent focus:border-primary-500 focus:bg-white rounded-[24px] text-lg font-medium transition-all outline-none"
+                          />
+                        </div>
+
+                        <div className="space-y-3">
+                          {isSearchingPatients ? (
+                            <div className="py-12 flex flex-col items-center justify-center gap-4">
+                              <Loader2 size={32} className="text-primary-500 animate-spin" />
+                              <p className="text-charcoal-500 font-medium">Buscando pacientes...</p>
+                            </div>
+                          ) : patients.length > 0 ? (
+                            patients.map((p) => (
+                              <button
+                                key={p.id}
+                                onClick={async () => {
+                                  setSelectedPatient(p);
+                                  setIsLoadingHistory(true);
+                                  try {
+                                    const patientHistory = await getPatientHistory(p.id);
+                                    setHistory(patientHistory);
+                                  } catch (err) {
+                                    toast.error('Erro ao carregar histórico');
+                                  } finally {
+                                    setIsLoadingHistory(false);
                                   }
-                                }
-                              }}
-                            />
-                            <div className="absolute right-12 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                              {isSearchingPatients && <Loader2 size={16} className="text-primary-500 animate-spin" />}
-                              {patientSearch && (
-                                <button 
-                                  onClick={() => {
-                                    setPatientSearch('');
-                                    setSelectedPatient(null);
-                                  }}
-                                  className="text-charcoal-400 hover:text-charcoal-600"
-                                >
-                                  <X size={16} />
-                                </button>
-                              )}
+                                }}
+                                className="w-full p-5 bg-white border border-charcoal-100 hover:border-primary-500 hover:shadow-lg rounded-2xl text-left transition-all flex items-center justify-between group"
+                              >
+                                <div>
+                                  <p className="font-bold text-charcoal-900 group-hover:text-primary-600 transition-colors">{p.name}</p>
+                                  <p className="text-xs text-charcoal-500 font-medium mt-1">Documento: {p.document || 'Não informado'}</p>
+                                </div>
+                                <ChevronRight size={20} className="text-charcoal-300 group-hover:text-primary-500 transition-colors" />
+                              </button>
+                            ))
+                          ) : patientSearch.length >= 3 ? (
+                            <div className="py-12 text-center">
+                              <p className="text-charcoal-500 font-medium">Nenhum paciente encontrado.</p>
+                            </div>
+                          ) : (
+                            <div className="py-12 text-center opacity-40">
+                              <Users size={48} className="mx-auto mb-4" />
+                              <p className="text-charcoal-500 font-medium">Digite pelo menos 3 letras para buscar</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="h-full flex flex-col">
+                        <div className="mb-8 flex items-center justify-between">
+                          <button 
+                            onClick={() => {
+                              setSelectedPatient(null);
+                              setHistory([]);
+                            }}
+                            className="flex items-center gap-2 text-primary-500 font-bold hover:gap-3 transition-all"
+                          >
+                            <ChevronLeft size={20} /> Voltar para busca
+                          </button>
+                          <div className="text-right">
+                            <p className="text-xs font-bold text-charcoal-400 uppercase tracking-widest">Paciente Selecionado</p>
+                            <p className="text-lg font-bold text-charcoal-900">{selectedPatient.name}</p>
+                          </div>
+                        </div>
+
+                        {isLoadingHistory ? (
+                          <div className="flex-1 flex flex-col items-center justify-center gap-4">
+                            <Loader2 size={48} className="text-primary-500 animate-spin" />
+                            <p className="text-charcoal-500 font-medium">Carregando histórico...</p>
+                          </div>
+                        ) : history.length === 0 ? (
+                          <div className="flex-1 flex flex-col items-center justify-center text-charcoal-400 gap-4 opacity-60">
+                            <div className="p-8 bg-white rounded-full border-2 border-dashed border-charcoal-200">
+                              <CloudUpload size={48} strokeWidth={1.5} />
+                            </div>
+                            <div className="text-center">
+                              <p className="font-bold text-charcoal-900">Nenhum registro encontrado</p>
+                              <p className="text-sm max-w-xs mx-auto">Este paciente ainda não possui capturas sincronizadas na nuvem.</p>
                             </div>
                           </div>
-    
-                          {/* Search Results */}
-                          {patientSearch.length >= 3 && !selectedPatient && (
-                            <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-charcoal-200 rounded-xl shadow-xl z-20 overflow-hidden">
-                              {patients.length > 0 ? (
-                                <>
-                                  {patients.map(p => (
-                                    <button 
-                                      key={p.id}
-                                      className="w-full px-4 py-3 text-left hover:bg-white border-b border-charcoal-100 last:border-0 flex items-center justify-between group"
-                                      onClick={() => {
-                                        setSelectedPatient(p);
-                                        setPatientSearch(p.name);
-                                      }}
-                                    >
-                                      <div className="flex flex-col">
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {history.map((item) => {
+                              const imageUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/captures/${item.storage_path}`;
+                              return (
+                                <div key={item.id} className="bg-white border border-charcoal-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all group">
+                                  <div className="aspect-video relative overflow-hidden">
+                                    <img 
+                                      src={imageUrl}
+                                      alt={item.name}
+                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                      referrerPolicy="no-referrer"
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
+                                      <button 
+                                        onClick={() => setZoomImage(imageUrl)}
+                                        className="w-full py-2 bg-white/20 backdrop-blur-md border border-white/30 text-white rounded-xl text-xs font-bold hover:bg-white/30 transition-all flex items-center justify-center gap-2"
+                                      >
+                                        <Maximize2 size={14} /> Visualizar
+                                      </button>
+                                    </div>
+                                  </div>
+                                  <div className="p-4">
+                                    <p className="font-bold text-charcoal-900 text-sm truncate">{item.name}</p>
+                                    <div className="flex items-center justify-between mt-2">
+                                      <p className="text-[10px] text-charcoal-500 font-medium">{new Date(item.created_at).toLocaleDateString('pt-BR')}</p>
+                                      <div className="flex items-center gap-1 text-[10px] text-primary-500 font-bold">
+                                        <CloudCheck size={12} /> Sincronizado
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          <AnimatePresence>
+            {isCheckInOpen && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[200] bg-charcoal-900/90 backdrop-blur-md flex items-center justify-center p-6"
+              >
+                <motion.div 
+                  initial={{ scale: 0.9, y: 20 }}
+                  animate={{ scale: 1, y: 0 }}
+                  className="w-full max-w-2xl bg-white rounded-[32px] shadow-2xl"
+                >
+                  <div className="p-8 border-b border-charcoal-100 bg-white/50 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div>
+                        <h2 className="text-2xl font-bold text-charcoal-900 tracking-tight">Identificação do atendimento</h2>
+                        <p className="text-charcoal-500 text-sm">Selecione a unidade, o profissional e o paciente para registrar o atendimento.</p>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => setIsCheckInOpen(false)}
+                      className="p-2 hover:bg-charcoal-50 rounded-full text-charcoal-400 transition-colors"
+                    >
+                      <X size={24} />
+                    </button>
+                  </div>
+
+                  {configError ? (
+                    <div className="p-12 flex flex-col items-center text-center gap-4">
+                      <div className="p-4 bg-amber-50 text-amber-600 rounded-full">
+                        <AlertCircle size={48} />
+                      </div>
+                      <div className="max-w-md">
+                        <h3 className="text-lg font-bold text-charcoal-900 mb-2">Configuração Necessária</h3>
+                        <p className="text-charcoal-500 text-sm leading-relaxed">
+                          Para utilizar as funcionalidades de nuvem, você precisa configurar as credenciais do Supabase no menu de <strong>Settings</strong> do AI Studio.
+                        </p>
+                        <div className="mt-6 p-4 bg-white rounded-xl border border-charcoal-200 text-left">
+                          <p className="text-xs font-bold text-charcoal-500 uppercase tracking-widest mb-2">Variáveis Requeridas:</p>
+                          <code className="text-xs text-charcoal-600 block bg-white p-2 rounded border border-charcoal-100 mb-1">VITE_SUPABASE_URL</code>
+                          <code className="text-xs text-charcoal-600 block bg-white p-2 rounded border border-charcoal-100">VITE_SUPABASE_ANON_KEY</code>
+                        </div>
+                      </div>
+                    </div>
+                  ) : isLoadingClinics && clinics.length === 0 ? (
+                    <div className="p-20 flex flex-col items-center justify-center gap-4">
+                      <Loader2 size={48} className="text-primary-500 animate-spin" />
+                      <p className="text-charcoal-500 font-medium">Carregando unidades disponíveis...</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="p-8 flex flex-col gap-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                          {/* Clinic Selection */}
+                          <div className="flex flex-col gap-2">
+                            <label className="text-xs font-bold text-charcoal-500 uppercase tracking-widest flex items-center gap-2">
+                              <Building2 size={12} /> Unidade
+                            </label>
+                            <div className="relative">
+                              <select 
+                                className="w-full px-4 py-3 bg-white border border-charcoal-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500/20 transition-all font-medium disabled:opacity-50"
+                                disabled={isLoadingClinics}
+                                value={selectedClinic?.id || ''}
+                                onChange={(e) => setSelectedClinic(clinics.find(c => c.id === e.target.value) || null)}
+                              >
+                                <option value="">{isLoadingClinics ? 'Carregando unidades...' : 'Selecione a unidade...'}</option>
+                                {clinics.map(c => (
+                                  <option key={c.id} value={c.id}>
+                                    {(c as any).unidade || (c as any).name || `Unidade ${c.id}`}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* Dentist Selection */}
+                          <div className="flex flex-col gap-2">
+                            <label className="text-xs font-bold text-charcoal-500 uppercase tracking-widest flex items-center gap-2">
+                              <Stethoscope size={12} /> Dentista Executor
+                            </label>
+                            <div className="relative">
+                              <select 
+                                className="w-full px-4 py-3 bg-white border border-charcoal-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500/20 transition-all font-medium disabled:opacity-50"
+                                disabled={!selectedClinic || isLoadingDentists}
+                                value={selectedDentist?.id || ''}
+                                onChange={(e) => setSelectedDentist(dentists.find(d => d.id === e.target.value) || null)}
+                              >
+                                <option value="">{isLoadingDentists ? 'Carregando dentistas...' : 'Selecione o dentista...'}</option>
+                                {dentists.map(d => (
+                                  <option key={d.id} value={d.id}>
+                                    {(d as any).nome_completo || (d as any).nome || (d as any).name || `Dentista ${d.id}`}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Patient Search */}
+                        <AnimatePresence>
+                          {selectedClinic && selectedDentist && (
+                            <motion.div 
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="flex flex-col gap-2 relative"
+                            >
+                              <div className="h-[1px] bg-charcoal-100 my-4" />
+                              
+                              <label className="text-xs font-bold text-charcoal-500 uppercase tracking-widest flex items-center gap-2">
+                                <User size={12} /> Paciente
+                              </label>
+                              <div className="relative">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-charcoal-400" size={16} />
+                                <input 
+                                  type="text"
+                                  className="w-full pl-12 pr-12 py-4 bg-white border border-charcoal-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500/20 transition-all font-medium text-lg"
+                                  placeholder="Buscar por nome..."
+                                  value={patientSearch}
+                                  onChange={(e) => setPatientSearch(e.target.value)}
+                                />
+                              </div>
+
+                              {/* Search Results */}
+                              {patientSearch.length >= 3 && !selectedPatient && (
+                                <div className="bg-white border border-charcoal-200 rounded-xl shadow-xl z-20 overflow-hidden mt-2">
+                                  {patients.length > 0 ? (
+                                    patients.map(p => (
+                                      <button 
+                                        key={p.id}
+                                        className="w-full px-4 py-3 text-left hover:bg-white border-b border-charcoal-100 last:border-0 flex items-center justify-between group"
+                                        onClick={() => {
+                                          setSelectedPatient(p);
+                                          setPatientSearch(p.name);
+                                        }}
+                                      >
                                         <span className="font-bold text-charcoal-700 group-hover:text-primary-600 transition-colors">
                                           {p.name}
                                         </span>
-                                        {p.document_id && (
-                                          <span className="text-xs text-charcoal-500 font-medium uppercase tracking-wider">
-                                            {p.document_id}
-                                          </span>
-                                        )}
-                                      </div>
-                                      <Check size={14} className="text-primary-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                    </button>
-                                  ))}
-                                  <button 
-                                    className="w-full px-4 py-3 text-left bg-white hover:bg-primary-50 text-primary-600 font-bold text-xs flex items-center gap-2 transition-colors"
-                                    onClick={() => setIsCreatingPatient(true)}
-                                  >
-                                    <Plus size={14} /> Não é nenhum destes? Cadastrar novo
-                                  </button>
-                                </>
-                              ) : (
-                                <button 
-                                  className="w-full px-4 py-4 text-center hover:bg-primary-50 text-primary-600 group transition-colors"
-                                  onClick={() => setIsCreatingPatient(true)}
-                                >
-                                  <div className="flex flex-col items-center gap-1">
-                                    <span className="text-sm font-bold text-charcoal-500 group-hover:text-primary-600">Nenhum paciente encontrado</span>
-                                    <span className="text-xs font-medium flex items-center gap-1">
-                                      <Plus size={14} /> Clique para cadastrar "{patientSearch}"
+                                        <Check size={14} className="text-primary-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                      </button>
+                                    ))
+                                  ) : (
+                                    <div className="p-4 text-center text-charcoal-500 text-sm">
+                                      Nenhum paciente encontrado
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {selectedPatient && (
+                                <div className="mt-2 p-3 bg-primary-50 border border-primary-100 rounded-xl flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <Check size={14} className="text-primary-500" />
+                                    <span className="text-sm font-bold text-primary-700">
+                                      {selectedPatient.name}
                                     </span>
                                   </div>
-                                </button>
+                                  <button 
+                                    onClick={() => {
+                                      setSelectedPatient(null);
+                                      setPatientSearch('');
+                                    }}
+                                    className="text-primary-500 hover:text-primary-600"
+                                  >
+                                    <X size={14} />
+                                  </button>
+                                </div>
                               )}
-                            </div>
+                            </motion.div>
                           )}
-    
-                          {/* Create New Patient Shortcut */}
-                          <div className="flex items-center justify-between mt-2">
-                            <p className="text-xs font-bold text-charcoal-500 uppercase tracking-widest">
-                              {!selectedPatient && patientSearch.length > 0 ? (patients.length === 0 && patientSearch.length >= 3 ? "Paciente não encontrado" : "Busca ativa") : "Rastreabilidade Clínica"}
-                            </p>
-                            <button 
-                              onClick={() => {
-                                setIsCreatingPatient(true);
-                                toast.info('Modo de cadastro rápido ativado. Digite o nome do novo paciente.');
-                              }}
-                              className="flex items-center gap-1.5 px-3 py-1 bg-primary-50 text-primary-600 rounded-full text-[10px] font-bold hover:bg-primary-100 transition-colors"
-                            >
-                              <Plus size={12} /> Novo Paciente
-                            </button>
-                          </div>
-    
-                          {selectedPatient && (
-                            <div className="mt-2 p-3 bg-primary-50 border border-primary-100 rounded-xl flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <Check size={14} className="text-primary-500" />
-                                <span className="text-sm font-bold text-primary-700">
-                                  {selectedPatient.name}
-                                </span>
-                              </div>
-                              <button 
-                                onClick={() => {
-                                  setSelectedPatient(null);
-                                  setPatientSearch('');
-                                }}
-                                className="text-primary-500 hover:text-primary-600"
-                              >
-                                <X size={14} />
-                              </button>
-                            </div>
-                          )}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                        </AnimatePresence>
+                      </div>
+
+                      <div className="p-8 bg-charcoal-50 border-t border-charcoal-100 flex justify-end">
+                        <button 
+                          onClick={async () => {
+                            await handleCheckIn();
+                            if (session) setIsCheckInOpen(false);
+                          }}
+                          disabled={isCheckingIn || !selectedClinic || !selectedDentist || (!selectedPatient && patientSearch.length < 3)}
+                          className="px-10 py-4 bg-primary-500 hover:bg-primary-600 disabled:bg-charcoal-200 text-white rounded-2xl font-bold shadow-xl shadow-primary-500/20 transition-all flex items-center gap-2"
+                        >
+                          {isCheckingIn ? <Loader2 size={20} className="animate-spin" /> : <Play size={20} />}
+                          Cadastrar e Iniciar
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Patient Registration Modal */}
+          <AnimatePresence>
+            {isCreatingPatient && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[210] bg-charcoal-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+              >
+                <motion.div 
+                  initial={{ scale: 0.9, y: 20 }}
+                  animate={{ scale: 1, y: 0 }}
+                  exit={{ scale: 0.9, y: 20 }}
+                  className="bg-white rounded-[32px] p-8 w-full max-w-md shadow-2xl"
+                >
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="bg-accent-500 p-2 rounded-xl text-white">
+                      <User size={20} />
+                    </div>
+                    <h3 className="text-xl font-bold text-charcoal-900">Novo Paciente</h3>
                   </div>
 
-                  <div className="p-8 bg-white border-t border-charcoal-100 flex justify-center">
-                    <button 
-                      onClick={handleCheckIn}
-                      disabled={!selectedClinic || !selectedDentist || (!selectedPatient && patientSearch.length < 3) || isCheckingIn}
-                      className={cn(
-                        "px-12 py-4 text-white rounded-2xl font-bold text-lg shadow-lg transition-all disabled:opacity-50 flex items-center gap-3",
-                        selectedPatient ? "bg-primary-500 hover:bg-primary-600 shadow-primary-500/20" : "bg-accent-500 hover:bg-accent-600 shadow-accent-500/20"
-                      )}
-                    >
-                      {isCheckingIn && <Loader2 size={20} className="animate-spin" />}
-                      {selectedPatient ? "Iniciar Atendimento" : "Cadastrar e Iniciar"}
-                    </button>
+                  <div className="flex flex-col gap-5">
+                    <div className="flex flex-col gap-2">
+                      <label className="text-xs font-bold text-charcoal-500 uppercase tracking-widest">Nome Completo</label>
+                      <input 
+                        type="text"
+                        autoFocus
+                        className="w-full px-4 py-3 bg-white border border-charcoal-200 rounded-xl outline-none focus:ring-2 focus:ring-accent-500/20 font-medium transition-all"
+                        placeholder="Nome do paciente"
+                        value={patientSearch}
+                        onChange={(e) => setPatientSearch(e.target.value)}
+                      />
+                    </div>
+                    
+                    <div className="flex flex-col gap-2">
+                      <label className="text-xs font-bold text-charcoal-500 uppercase tracking-widest">Documento (Opcional)</label>
+                      <input 
+                        type="text"
+                        className="w-full px-4 py-3 bg-white border border-charcoal-200 rounded-xl outline-none focus:ring-2 focus:ring-accent-500/20 font-medium transition-all"
+                        placeholder="CPF ou RG"
+                        value={newPatientDocument}
+                        onChange={(e) => setNewPatientDocument(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex flex-col gap-2">
+                        <label className="text-xs font-bold text-charcoal-500 uppercase tracking-widest">E-mail</label>
+                        <input 
+                          type="email"
+                          className="w-full px-4 py-3 bg-white border border-charcoal-200 rounded-xl outline-none focus:ring-2 focus:ring-accent-500/20 font-medium transition-all"
+                          placeholder="email@exemplo.com"
+                          value={newPatientEmail}
+                          onChange={(e) => setNewPatientEmail(e.target.value)}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <label className="text-xs font-bold text-charcoal-500 uppercase tracking-widest">Celular</label>
+                        <input 
+                          type="tel"
+                          className="w-full px-4 py-3 bg-white border border-charcoal-200 rounded-xl outline-none focus:ring-2 focus:ring-accent-500/20 font-medium transition-all"
+                          placeholder="(00) 00000-0000"
+                          value={newPatientPhone}
+                          onChange={(e) => setNewPatientPhone(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3 mt-4">
+                      <button 
+                        onClick={() => setIsCreatingPatient(false)}
+                        className="flex-1 px-4 py-4 bg-charcoal-100 text-charcoal-600 rounded-2xl font-bold hover:bg-charcoal-200 transition-all"
+                      >
+                        Cancelar
+                      </button>
+                      <button 
+                        onClick={handleCreatePatient}
+                        className="flex-1 px-4 py-4 bg-accent-500 text-white rounded-2xl font-bold hover:bg-accent-600 transition-all shadow-lg shadow-accent-500/20"
+                      >
+                        Cadastrar
+                      </button>
+                    </div>
                   </div>
-                </>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Patient Registration Modal */}
-      <AnimatePresence>
-        {isCreatingPatient && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[110] bg-charcoal-900/60 backdrop-blur-sm flex items-center justify-center p-4"
-          >
-            <motion.div 
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              className="bg-white rounded-[32px] p-8 w-full max-w-md shadow-2xl"
-            >
-              <div className="flex items-center gap-3 mb-6">
-                <div className="bg-accent-500 p-2 rounded-xl text-white">
-                  <User size={20} />
-                </div>
-                <h3 className="text-xl font-bold text-charcoal-900">Novo Paciente</h3>
-              </div>
-
-              <div className="flex flex-col gap-5">
-                <div className="flex flex-col gap-2">
-                  <label className="text-xs font-bold text-charcoal-500 uppercase tracking-widest">Nome Completo</label>
-                  <input 
-                    type="text"
-                    autoFocus
-                    className="w-full px-4 py-3 bg-white border border-charcoal-200 rounded-xl outline-none focus:ring-2 focus:ring-accent-500/20 font-medium transition-all"
-                    placeholder="Nome do paciente"
-                    value={patientSearch}
-                    onChange={(e) => setPatientSearch(e.target.value)}
-                  />
-                </div>
-                
-                <div className="flex flex-col gap-2">
-                  <label className="text-xs font-bold text-charcoal-500 uppercase tracking-widest">Documento (Opcional)</label>
-                  <input 
-                    type="text"
-                    className="w-full px-4 py-3 bg-white border border-charcoal-200 rounded-xl outline-none focus:ring-2 focus:ring-accent-500/20 font-medium transition-all"
-                    placeholder="CPF ou RG"
-                    value={newPatientDocument}
-                    onChange={(e) => setNewPatientDocument(e.target.value)}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-2">
-                    <label className="text-xs font-bold text-charcoal-500 uppercase tracking-widest">E-mail</label>
-                    <input 
-                      type="email"
-                      className="w-full px-4 py-3 bg-white border border-charcoal-200 rounded-xl outline-none focus:ring-2 focus:ring-accent-500/20 font-medium transition-all"
-                      placeholder="email@exemplo.com"
-                      value={newPatientEmail}
-                      onChange={(e) => setNewPatientEmail(e.target.value)}
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="text-xs font-bold text-charcoal-500 uppercase tracking-widest">Celular</label>
-                    <input 
-                      type="tel"
-                      className="w-full px-4 py-3 bg-white border border-charcoal-200 rounded-xl outline-none focus:ring-2 focus:ring-accent-500/20 font-medium transition-all"
-                      placeholder="(00) 00000-0000"
-                      value={newPatientPhone}
-                      onChange={(e) => setNewPatientPhone(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex gap-3 mt-4">
-                  <button 
-                    onClick={() => setIsCreatingPatient(false)}
-                    className="flex-1 px-4 py-4 bg-charcoal-100 text-charcoal-600 rounded-2xl font-bold hover:bg-charcoal-200 transition-all"
-                  >
-                    Cancelar
-                  </button>
-                  <button 
-                    onClick={handleCreatePatient}
-                    className="flex-1 px-4 py-4 bg-accent-500 text-white rounded-2xl font-bold hover:bg-accent-600 transition-all shadow-lg shadow-accent-500/20"
-                  >
-                    Cadastrar
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </>
+      ) : (
+        <div className="flex-1 flex flex-col overflow-hidden">
 
       {/* Header */}
       <header className="bg-white border-b border-charcoal-200 px-6 py-3 flex items-center justify-between sticky top-0 z-[110] shadow-sm">
@@ -2100,11 +2342,17 @@ export default function App() {
               )}
             </div>
             <button 
-              onClick={handleSignOut}
-              className="p-2.5 bg-red-50 hover:bg-red-500 text-red-500 hover:text-white rounded-xl transition-all shadow-sm border border-red-100"
-              title="Sair"
+              onClick={() => {
+                setSession(null);
+                setSelectedPatient(null);
+                setPatientSearch('');
+                toast.success('Atendimento finalizado com sucesso');
+              }}
+              className="p-2.5 bg-charcoal-50 hover:bg-charcoal-100 text-charcoal-600 rounded-xl transition-all shadow-sm border border-charcoal-200 flex items-center gap-2 px-4"
+              title="Finalizar Atendimento"
             >
-              <X size={20} strokeWidth={3} />
+              <LayoutDashboard size={18} />
+              <span className="text-xs font-bold">Dashboard</span>
             </button>
           </div>
         </div>
@@ -2321,21 +2569,40 @@ export default function App() {
                                       <Check size={12} strokeWidth={3} />
                                     </button>
 
-                                    <div className="absolute inset-0 bg-white/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                                    <div className="absolute inset-0 bg-white/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                                       <button 
                                         onClick={() => {
                                           const url = URL.createObjectURL(capture.blob);
                                           setZoomImage(url);
                                         }}
-                                        className="p-2.5 bg-white/80 hover:bg-white rounded-xl text-charcoal-600 backdrop-blur-md transition-all shadow-lg border border-charcoal-200"
+                                        className="p-2 bg-white/80 hover:bg-white rounded-xl text-charcoal-600 backdrop-blur-md transition-all shadow-lg border border-charcoal-200"
+                                        title="Zoom"
                                       >
-                                        <ZoomIn size={20} />
+                                        <ZoomIn size={18} />
+                                      </button>
+                                      <button 
+                                        onClick={() => {
+                                          const url = URL.createObjectURL(capture.blob);
+                                          setImageEditorUrl(url);
+                                        }}
+                                        className="p-2 bg-primary-500 text-white rounded-xl hover:bg-primary-600 backdrop-blur-md transition-all shadow-lg border border-primary-400"
+                                        title="Editar Imagem"
+                                      >
+                                        <Edit3 size={18} />
+                                      </button>
+                                      <button 
+                                        onClick={() => setEditingCapture(capture)}
+                                        className="p-2 bg-white/80 hover:bg-white rounded-xl text-charcoal-600 backdrop-blur-md transition-all shadow-lg border border-charcoal-200"
+                                        title="Editar Metadados"
+                                      >
+                                        <Settings2 size={18} />
                                       </button>
                                       <button 
                                         onClick={() => handleDelete(capture.id)}
-                                        className="p-2.5 bg-red-50 hover:bg-red-100 rounded-xl text-red-500 backdrop-blur-md transition-all shadow-lg border border-red-100"
+                                        className="p-2 bg-red-50 hover:bg-red-100 rounded-xl text-red-500 backdrop-blur-md transition-all shadow-lg border border-red-100"
+                                        title="Excluir"
                                       >
-                                        <Trash2 size={20} />
+                                        <Trash2 size={18} />
                                       </button>
                                     </div>
                                   </div>
@@ -2740,13 +3007,36 @@ export default function App() {
                               {new Date(item.created_at).toLocaleDateString()}
                             </div>
                             
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                               <button 
                                 onClick={() => setZoomImage(imageUrl)}
-                                className="p-3 bg-white text-charcoal-900 rounded-xl font-bold text-xs hover:bg-charcoal-100 transition-all flex items-center gap-2 shadow-xl"
+                                className="p-2.5 bg-white text-charcoal-900 rounded-xl font-bold text-xs hover:bg-charcoal-100 transition-all flex items-center gap-1.5 shadow-xl"
+                                title="Visualizar"
                               >
-                                <ZoomIn size={16} />
+                                <ZoomIn size={14} />
                                 Zoom
+                              </button>
+                              <button 
+                                onClick={() => setImageEditorUrl(imageUrl)}
+                                className="p-2.5 bg-primary-500 text-white rounded-xl font-bold text-xs hover:bg-primary-600 transition-all flex items-center gap-1.5 shadow-xl"
+                                title="Editar Imagem"
+                              >
+                                <Edit3 size={14} />
+                                Editar
+                              </button>
+                              <button 
+                                onClick={() => setEditingCapture({
+                                  id: item.id,
+                                  name: item.name || 'Captura Clínica',
+                                  notes: item.notes || '',
+                                  timestamp: new Date(item.created_at).getTime(),
+                                  blob: new Blob(), // Placeholder as it's in cloud
+                                  sync_status: 'synced'
+                                })}
+                                className="p-2.5 bg-white text-charcoal-600 rounded-xl font-bold text-xs hover:bg-charcoal-100 transition-all flex items-center gap-1.5 shadow-xl border border-charcoal-200"
+                                title="Editar Metadados"
+                              >
+                                <Settings2 size={14} />
                               </button>
                             </div>
                           </div>
@@ -2774,10 +3064,277 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Edit Modal */}
+      {/* Check-in Overlay */}
+
+      {/* Check-in Overlay */}
+
+      {/* Check-in Overlay */}
+      <AnimatePresence>
+        {isCheckInOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] bg-charcoal-900/90 backdrop-blur-md flex items-center justify-center p-6"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              className="w-full max-w-2xl bg-white rounded-[32px] shadow-2xl"
+            >
+              <div className="p-8 border-b border-charcoal-100 bg-white/50 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div>
+                    <h2 className="text-2xl font-bold text-charcoal-900 tracking-tight">Identificação do atendimento</h2>
+                    <p className="text-charcoal-500 text-sm">Selecione a unidade, o profissional e o paciente para registrar o atendimento.</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setIsCheckInOpen(false)}
+                  className="p-2 hover:bg-charcoal-50 rounded-full text-charcoal-400 transition-colors"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              {configError ? (
+                <div className="p-12 flex flex-col items-center text-center gap-4">
+                  <div className="p-4 bg-amber-50 text-amber-600 rounded-full">
+                    <AlertCircle size={48} />
+                  </div>
+                  <div className="max-w-md">
+                    <h3 className="text-lg font-bold text-charcoal-900 mb-2">Configuração Necessária</h3>
+                    <p className="text-charcoal-500 text-sm leading-relaxed">
+                      Para utilizar as funcionalidades de nuvem, você precisa configurar as credenciais do Supabase no menu de <strong>Settings</strong> do AI Studio.
+                    </p>
+                    <div className="mt-6 p-4 bg-white rounded-xl border border-charcoal-200 text-left">
+                      <p className="text-xs font-bold text-charcoal-500 uppercase tracking-widest mb-2">Variáveis Requeridas:</p>
+                      <code className="text-xs text-charcoal-600 block bg-white p-2 rounded border border-charcoal-100 mb-1">VITE_SUPABASE_URL</code>
+                      <code className="text-xs text-charcoal-600 block bg-white p-2 rounded border border-charcoal-100">VITE_SUPABASE_ANON_KEY</code>
+                    </div>
+                  </div>
+                </div>
+              ) : isLoadingClinics && clinics.length === 0 ? (
+                <div className="p-20 flex flex-col items-center justify-center gap-4">
+                  <Loader2 size={48} className="text-primary-500 animate-spin" />
+                  <p className="text-charcoal-500 font-medium">Carregando unidades disponíveis...</p>
+                </div>
+              ) : (
+                <>
+                  <div className="p-8 flex flex-col gap-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      {/* Clinic Selection */}
+                      <div className="flex flex-col gap-2">
+                        <label className="text-xs font-bold text-charcoal-500 uppercase tracking-widest flex items-center gap-2">
+                          <Building2 size={12} /> Unidade
+                        </label>
+                        <div className="relative">
+                          <select 
+                            className="w-full px-4 py-3 bg-white border border-charcoal-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500/20 transition-all font-medium disabled:opacity-50"
+                            disabled={isLoadingClinics}
+                            value={selectedClinic?.id || ''}
+                            onChange={(e) => setSelectedClinic(clinics.find(c => c.id === e.target.value) || null)}
+                          >
+                            <option value="">{isLoadingClinics ? 'Carregando unidades...' : 'Selecione a unidade...'}</option>
+                            {clinics.map(c => (
+                              <option key={c.id} value={c.id}>
+                                {(c as any).unidade || (c as any).name || `Unidade ${c.id}`}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Dentist Selection */}
+                      <div className="flex flex-col gap-2">
+                        <label className="text-xs font-bold text-charcoal-500 uppercase tracking-widest flex items-center gap-2">
+                          <Stethoscope size={12} /> Dentista Executor
+                        </label>
+                        <div className="relative">
+                          <select 
+                            className="w-full px-4 py-3 bg-white border border-charcoal-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500/20 transition-all font-medium disabled:opacity-50"
+                            disabled={!selectedClinic || isLoadingDentists}
+                            value={selectedDentist?.id || ''}
+                            onChange={(e) => setSelectedDentist(dentists.find(d => d.id === e.target.value) || null)}
+                          >
+                            <option value="">{isLoadingDentists ? 'Carregando dentistas...' : 'Selecione o dentista...'}</option>
+                            {dentists.map(d => (
+                              <option key={d.id} value={d.id}>
+                                {(d as any).nome_completo || (d as any).nome || (d as any).name || `Dentista ${d.id}`}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Patient Search */}
+                    <AnimatePresence>
+                      {selectedClinic && selectedDentist && (
+                        <motion.div 
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="flex flex-col gap-2 relative"
+                        >
+                          <div className="h-[1px] bg-charcoal-100 my-4" />
+                          
+                          <label className="text-xs font-bold text-charcoal-500 uppercase tracking-widest flex items-center gap-2">
+                            <User size={12} /> Paciente
+                          </label>
+                          <div className="relative">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-charcoal-400" size={16} />
+                            <input 
+                              type="text"
+                              className="w-full pl-12 pr-12 py-4 bg-white border border-charcoal-200 rounded-xl outline-none focus:ring-2 focus:ring-primary-500/20 transition-all font-medium text-lg"
+                              placeholder="Buscar por nome..."
+                              value={patientSearch}
+                              onChange={(e) => setPatientSearch(e.target.value)}
+                            />
+                          </div>
+
+                          {/* Search Results */}
+                          {patientSearch.length >= 3 && !selectedPatient && (
+                            <div className="bg-white border border-charcoal-200 rounded-xl shadow-xl z-20 overflow-hidden mt-2">
+                              {patients.length > 0 ? (
+                                patients.map(p => (
+                                  <button 
+                                    key={p.id}
+                                    className="w-full px-4 py-3 text-left hover:bg-white border-b border-charcoal-100 last:border-0 flex items-center justify-between group"
+                                    onClick={() => {
+                                      setSelectedPatient(p);
+                                      setPatientSearch(p.name);
+                                    }}
+                                  >
+                                    <span className="font-bold text-charcoal-700 group-hover:text-primary-600 transition-colors">
+                                      {p.name}
+                                    </span>
+                                    <Check size={14} className="text-primary-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                  </button>
+                                ))
+                              ) : (
+                                <div className="p-4 text-center text-charcoal-500 text-sm">
+                                  Nenhum paciente encontrado
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {selectedPatient && (
+                            <div className="mt-2 p-3 bg-primary-50 border border-primary-100 rounded-xl flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Check size={14} className="text-primary-500" />
+                                <span className="text-sm font-bold text-primary-700">
+                                  {selectedPatient.name}
+                                </span>
+                              </div>
+                              <button 
+                                onClick={() => {
+                                  setSelectedPatient(null);
+                                  setPatientSearch('');
+                                }}
+                                className="text-primary-500 hover:text-primary-600"
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                          )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  <div className="p-8 bg-charcoal-50 border-t border-charcoal-100 flex justify-end">
+                    <button 
+                      onClick={async () => {
+                        await handleCheckIn();
+                      }}
+                      disabled={isCheckingIn || !selectedClinic || !selectedDentist || (!selectedPatient && patientSearch.length < 3)}
+                      className="px-10 py-4 bg-primary-500 hover:bg-primary-600 disabled:bg-charcoal-200 text-white rounded-2xl font-bold shadow-xl shadow-primary-500/20 transition-all flex items-center gap-2"
+                    >
+                      {isCheckingIn ? <Loader2 size={20} className="animate-spin" /> : <Play size={20} />}
+                      Cadastrar e Iniciar
+                    </button>
+                  </div>
+                </>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+        </div>
+      )}
+
+      {/* Zoom Modal */}
+      <AnimatePresence>
+        {zoomImage && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[500] bg-white/90 backdrop-blur-xl flex items-center justify-center p-4 md:p-8"
+            onClick={() => setZoomImage(null)}
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="max-w-full max-h-full flex flex-col items-center gap-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="w-full flex items-center justify-between px-2">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-primary-50 rounded-lg border border-primary-100">
+                    <Maximize2 size={20} className="text-primary-500" />
+                  </div>
+                  <span className="text-charcoal-900 font-bold text-sm uppercase tracking-widest">Visualização em Alta Definição</span>
+                </div>
+                <button 
+                  onClick={() => setZoomImage(null)}
+                  className="p-2 bg-charcoal-100 hover:bg-charcoal-200 rounded-full text-charcoal-600 transition-colors border border-charcoal-200"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              {/* Image Container */}
+              <div className="relative group">
+                <img 
+                  src={zoomImage} 
+                  alt="Zoom"
+                  className="max-w-full max-h-[70vh] rounded-2xl shadow-2xl object-contain ring-1 ring-charcoal-200"
+                />
+              </div>
+              
+              {/* Footer Buttons */}
+              <div className="flex items-center gap-4">
+                <button 
+                  onClick={() => {
+                    setImageEditorUrl(zoomImage);
+                    setZoomImage(null);
+                  }}
+                  className="px-8 py-3 bg-primary-500 text-white rounded-full font-bold text-sm hover:bg-primary-600 transition-all shadow-xl flex items-center gap-2 shadow-primary-500/20"
+                >
+                  <Edit3 size={18} />
+                  Editar Imagem
+                </button>
+                <button 
+                  onClick={() => setZoomImage(null)}
+                  className="px-8 py-3 bg-white text-charcoal-600 border border-charcoal-200 rounded-full font-bold text-sm hover:bg-white transition-all shadow-xl"
+                >
+                  Fechar Visualização
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Edit Modal (Metadata) */}
       <AnimatePresence>
         {editingCapture && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+          <div className="fixed inset-0 z-[600] flex items-center justify-center p-6">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -2851,7 +3408,7 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[210] bg-charcoal-900/95 backdrop-blur-md flex items-center justify-center p-0 md:p-2"
+            className="fixed inset-0 z-[650] bg-charcoal-900/95 backdrop-blur-md flex items-center justify-center p-0 md:p-2"
           >
             <motion.div 
               initial={{ scale: 0.95, opacity: 0 }}
@@ -2905,345 +3462,239 @@ export default function App() {
                     ))}
                   </div>
 
-                  <div className="mt-auto flex flex-col gap-2 px-1">
-                    <button 
-                      onClick={handleUndo}
-                      className="p-2 text-charcoal-400 hover:bg-charcoal-200 rounded-lg transition-all flex-shrink-0"
-                      title="Desfazer"
-                    >
-                      <Undo size={18} />
-                    </button>
-                    <button 
-                      onClick={handleDeleteSelected}
-                      onDoubleClick={handleClearAll}
-                      className="p-2 text-red-400 hover:bg-red-50 rounded-lg transition-all flex-shrink-0"
-                      title="Deletar Selecionado (Duplo clique para Limpar Tudo)"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
-                </div>
+                  <div className="w-8 h-[1px] bg-charcoal-100" />
 
-                {/* Floating Horizontal Drawing Toolbar */}
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 h-12 bg-white/80 backdrop-blur-md border border-charcoal-200 rounded-2xl flex items-center px-4 gap-3 shadow-xl">
-                  <div className="flex items-center gap-1 bg-white p-0.5 rounded-xl border border-charcoal-100">
+                  <div className="flex flex-col gap-2">
                     <button 
                       onClick={() => setActiveEditorTool('select')}
                       className={cn(
-                        "p-2 rounded-lg transition-all flex-shrink-0",
+                        "p-2.5 rounded-xl transition-all",
                         activeEditorTool === 'select' ? "bg-primary-500 text-white shadow-lg shadow-primary-500/20" : "text-charcoal-400 hover:bg-charcoal-200"
                       )}
-                      title="Selecionar"
+                      title="Selecionar (V)"
                     >
-                      <MousePointer2 size={18} />
+                      <MousePointer2 size={20} />
                     </button>
                     <button 
                       onClick={() => {
                         setActiveEditorTool('rect');
-                        addFabricRect();
                       }}
                       className={cn(
-                        "p-2 rounded-lg transition-all flex-shrink-0",
+                        "p-2.5 rounded-xl transition-all",
                         activeEditorTool === 'rect' ? "bg-primary-500 text-white shadow-lg shadow-primary-500/20" : "text-charcoal-400 hover:bg-charcoal-200"
                       )}
-                      title="Retângulo"
+                      title="Retângulo (R)"
                     >
-                      <Square size={18} />
+                      <Layers size={20} />
                     </button>
                     <button 
                       onClick={() => {
                         setActiveEditorTool('circle');
-                        addFabricCircle();
                       }}
                       className={cn(
-                        "p-2 rounded-lg transition-all flex-shrink-0",
+                        "p-2.5 rounded-xl transition-all",
                         activeEditorTool === 'circle' ? "bg-primary-500 text-white shadow-lg shadow-primary-500/20" : "text-charcoal-400 hover:bg-charcoal-200"
                       )}
-                      title="Círculo"
+                      title="Círculo (C)"
                     >
-                      <Circle size={18} />
+                      <Circle size={20} />
                     </button>
                     <button 
                       onClick={() => {
                         setActiveEditorTool('arrow');
-                        addFabricArrow();
                       }}
                       className={cn(
-                        "p-2 rounded-lg transition-all flex-shrink-0",
+                        "p-2.5 rounded-xl transition-all",
                         activeEditorTool === 'arrow' ? "bg-primary-500 text-white shadow-lg shadow-primary-500/20" : "text-charcoal-400 hover:bg-charcoal-200"
                       )}
-                      title="Seta"
+                      title="Seta (A)"
                     >
-                      <ArrowUpRight size={18} />
+                      <ArrowUpRight size={20} />
                     </button>
                     <button 
                       onClick={() => {
                         setActiveEditorTool('text');
-                        addFabricText();
                       }}
                       className={cn(
-                        "p-2 rounded-lg transition-all flex-shrink-0",
+                        "p-2.5 rounded-xl transition-all",
                         activeEditorTool === 'text' ? "bg-primary-500 text-white shadow-lg shadow-primary-500/20" : "text-charcoal-400 hover:bg-charcoal-200"
                       )}
-                      title="Texto"
+                      title="Texto (T)"
                     >
-                      <Type size={18} />
+                      <Type size={20} />
                     </button>
                     <button 
                       onClick={() => setActiveEditorTool('pan')}
                       className={cn(
-                        "p-2 rounded-lg transition-all flex-shrink-0",
+                        "p-2.5 rounded-xl transition-all",
                         activeEditorTool === 'pan' ? "bg-primary-500 text-white shadow-lg shadow-primary-500/20" : "text-charcoal-400 hover:bg-charcoal-200"
                       )}
-                      title="Mover (Pan)"
+                      title="Mover (H)"
                     >
-                      <Hand size={18} />
+                      <Hand size={20} />
                     </button>
                   </div>
 
-                  <div className="w-[1px] h-6 bg-charcoal-200 mx-1" />
+                  <div className="w-8 h-[1px] bg-charcoal-100" />
 
-                  {/* Zoom Controls */}
-                  <div className="flex items-center gap-0.5 bg-white p-0.5 rounded-xl border border-charcoal-100">
+                  <div className="flex flex-col gap-2">
                     <button 
-                      onClick={() => {
-                        const canvas = fabricCanvasRef.current;
-                        if (canvas) {
-                          const newZoom = canvas.getZoom() * 1.1;
-                          canvas.setZoom(newZoom);
-                          setZoomLevel(newZoom);
-                        }
-                      }}
-                      className="p-2 text-charcoal-400 hover:bg-charcoal-200 rounded-lg transition-all"
-                      title="Aumentar Zoom"
+                      onClick={handleUndo}
+                      className="p-2.5 rounded-xl text-charcoal-400 hover:bg-charcoal-200 transition-all"
+                      title="Desfazer (Ctrl+Z)"
                     >
-                      <ZoomIn size={18} />
+                      <Undo size={20} />
                     </button>
-                    <div className="px-1 text-[10px] font-mono font-bold text-charcoal-500 min-w-[40px] text-center">
-                      {Math.round(zoomLevel * 100)}%
-                    </div>
                     <button 
-                      onClick={() => {
-                        const canvas = fabricCanvasRef.current;
-                        if (canvas) {
-                          const newZoom = canvas.getZoom() / 1.1;
-                          canvas.setZoom(newZoom);
-                          setZoomLevel(newZoom);
-                        }
-                      }}
-                      className="p-2 text-charcoal-400 hover:bg-charcoal-200 rounded-lg transition-all"
-                      title="Diminuir Zoom"
+                      onClick={handleClearAll}
+                      className="p-2.5 rounded-xl text-charcoal-400 hover:bg-charcoal-200 transition-all"
+                      title="Limpar Tudo"
                     >
-                      <ZoomOut size={18} />
+                      <RotateCcw size={20} />
                     </button>
                     <button 
                       onClick={() => {
                         const canvas = fabricCanvasRef.current;
                         if (canvas) {
-                          // Zoom to 100% of the original image size
-                          const zoom = 1 / initialScaleRef.current;
-                          canvas.setZoom(zoom);
-                          // Center it (roughly)
-                          canvas.viewportTransform = [zoom, 0, 0, zoom, 0, 0];
-                          setZoomLevel(zoom);
+                          const active = canvas.getActiveObject();
+                          if (active) {
+                            canvas.remove(active);
+                            canvas.requestRenderAll();
+                          }
                         }
                       }}
-                      className="p-2 text-charcoal-400 hover:bg-charcoal-200 rounded-lg transition-all"
-                      title="Tamanho Real (100%)"
+                      className="p-2.5 rounded-xl text-charcoal-400 hover:bg-red-50 hover:text-red-500 transition-all"
+                      title="Excluir (Del)"
                     >
-                      <Maximize2 size={16} />
-                    </button>
-                    <button 
-                      onClick={() => {
-                        const canvas = fabricCanvasRef.current;
-                        if (canvas) {
-                          canvas.setZoom(1);
-                          canvas.viewportTransform = [1, 0, 0, 1, 0, 0];
-                          setZoomLevel(1);
-                        }
-                      }}
-                      className="p-2 text-charcoal-400 hover:bg-charcoal-200 rounded-lg transition-all"
-                      title="Ajustar à Tela"
-                    >
-                      <RefreshCw size={16} />
+                      <Trash2 size={20} />
                     </button>
                   </div>
                 </div>
 
-                {/* Floating Adjustments Sidebar (Right) */}
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 z-30 w-48 bg-white/80 backdrop-blur-md border border-charcoal-200 rounded-2xl p-4 flex flex-col gap-4 shadow-xl max-h-[80vh] overflow-y-auto">
-                  <h3 className="text-[10px] font-bold text-charcoal-400 uppercase tracking-widest">Ajustes</h3>
+                {/* Floating Adjustment Sidebar (Right) */}
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 z-30 w-64 bg-white/80 backdrop-blur-md border border-charcoal-200 rounded-2xl p-4 shadow-xl flex flex-col gap-6">
+                  <h3 className="text-[10px] font-bold text-charcoal-900 uppercase tracking-widest border-b border-charcoal-100 pb-2">Ajustes de Imagem</h3>
                   
-                  <div className="flex flex-col gap-3">
-                    <div className="space-y-1">
-                      <div className="flex justify-between">
-                        <label className="text-[10px] font-bold text-charcoal-600">Brilho</label>
-                        <span className="text-[10px] font-mono text-primary-600">{brightness > 0 ? `+${brightness}` : brightness}</span>
-                      </div>
-                      <input 
-                        type="range" 
-                        min="-100" 
-                        max="100" 
-                        value={brightness}
-                        onChange={(e) => setBrightness(parseInt(e.target.value))}
-                        className="w-full h-1.5 accent-primary-500 bg-charcoal-200 rounded-lg appearance-none cursor-pointer"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <div className="flex justify-between">
-                        <label className="text-[10px] font-bold text-charcoal-600">Contraste</label>
-                        <span className="text-[10px] font-mono text-primary-600">{contrast > 0 ? `+${contrast}` : contrast}</span>
-                      </div>
-                      <input 
-                        type="range" 
-                        min="-100" 
-                        max="100" 
-                        value={contrast}
-                        onChange={(e) => setContrast(parseInt(e.target.value))}
-                        className="w-full h-1.5 accent-primary-500 bg-charcoal-200 rounded-lg appearance-none cursor-pointer"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <div className="flex justify-between">
-                        <label className="text-[10px] font-bold text-charcoal-600">Saturação</label>
-                        <span className="text-[10px] font-mono text-primary-600">{saturation > 0 ? `+${saturation}` : saturation}</span>
-                      </div>
-                      <input 
-                        type="range" 
-                        min="-100" 
-                        max="100" 
-                        value={saturation}
-                        onChange={(e) => setSaturation(parseInt(e.target.value))}
-                        className="w-full h-1.5 accent-primary-500 bg-charcoal-200 rounded-lg appearance-none cursor-pointer"
-                      />
-                    </div>
-
-                    <button 
-                      onClick={() => {
-                        setBrightness(0);
-                        setContrast(0);
-                        setSaturation(0);
-                        setStrokeWidth(4);
-                        setIsDashed(false);
-                      }}
-                      className="py-1.5 px-3 bg-white border border-charcoal-200 text-charcoal-500 rounded-lg text-[10px] font-bold hover:bg-white transition-colors"
-                    >
-                      Resetar
-                    </button>
-                  </div>
-
-                  <div className="pt-3 border-t border-charcoal-100 flex flex-col gap-3">
-                    <h3 className="text-[10px] font-bold text-charcoal-400 uppercase tracking-widest">Objeto</h3>
-                    
-                    <div className="space-y-3">
-                      <div className="space-y-1">
-                        <div className="flex justify-between">
-                          <label className="text-[10px] font-bold text-charcoal-600">Espessura</label>
-                          <span className="text-[10px] font-mono text-primary-600">{strokeWidth}px</span>
-                        </div>
-                        <input 
-                          type="range" 
-                          min="1" 
-                          max="20" 
-                          value={strokeWidth}
-                          onChange={(e) => setStrokeWidth(parseInt(e.target.value))}
-                          className="w-full h-1.5 accent-primary-500 bg-charcoal-200 rounded-lg appearance-none cursor-pointer"
-                        />
-                      </div>
-
+                  <div className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-2">
                       <div className="flex items-center justify-between">
-                        <label className="text-[10px] font-bold text-charcoal-600">Pontilhado</label>
-                        <button
-                          onClick={() => setIsDashed(!isDashed)}
-                          className={cn(
-                            "w-8 h-4 rounded-full transition-all relative",
-                            isDashed ? "bg-primary-500" : "bg-charcoal-200"
-                          )}
-                        >
-                          <div className={cn(
-                            "absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all",
-                            isDashed ? "left-4.5" : "left-0.5"
-                          )} />
-                        </button>
+                        <span className="text-[10px] font-bold uppercase text-charcoal-600">Espessura</span>
+                        <span className="text-[10px] font-mono text-charcoal-400">{strokeWidth}px</span>
                       </div>
+                      <input 
+                        type="range" 
+                        min="1" 
+                        max="20" 
+                        value={strokeWidth} 
+                        onChange={(e) => setStrokeWidth(parseInt(e.target.value))}
+                        className="w-full h-1.5 bg-charcoal-100 rounded-lg appearance-none cursor-pointer accent-primary-500"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold uppercase text-charcoal-600">Linha Tracejada</span>
+                      <button 
+                        onClick={() => setIsDashed(!isDashed)}
+                        className={cn(
+                          "w-10 h-5 rounded-full transition-all relative",
+                          isDashed ? "bg-primary-500" : "bg-charcoal-200"
+                        )}
+                      >
+                        <div className={cn(
+                          "absolute top-1 w-3 h-3 rounded-full bg-white transition-all",
+                          isDashed ? "right-1" : "left-1"
+                        )} />
+                      </button>
+                    </div>
+
+                    <div className="w-full h-[1px] bg-charcoal-100 my-2" />
+
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-charcoal-600">
+                          <Sun size={14} />
+                          <span className="text-[10px] font-bold uppercase">Brilho</span>
+                        </div>
+                        <span className="text-[10px] font-mono text-charcoal-400">{brightness}%</span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="-100" 
+                        max="100" 
+                        value={brightness} 
+                        onChange={(e) => setBrightness(parseInt(e.target.value))}
+                        className="w-full h-1.5 bg-charcoal-100 rounded-lg appearance-none cursor-pointer accent-primary-500"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-charcoal-600">
+                          <Contrast size={14} />
+                          <span className="text-[10px] font-bold uppercase">Contraste</span>
+                        </div>
+                        <span className="text-[10px] font-mono text-charcoal-400">{contrast}%</span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="-100" 
+                        max="100" 
+                        value={contrast} 
+                        onChange={(e) => setContrast(parseInt(e.target.value))}
+                        className="w-full h-1.5 bg-charcoal-100 rounded-lg appearance-none cursor-pointer accent-primary-500"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-charcoal-600">
+                          <Droplets size={14} />
+                          <span className="text-[10px] font-bold uppercase">Saturação</span>
+                        </div>
+                        <span className="text-[10px] font-mono text-charcoal-400">{saturation}%</span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="-100" 
+                        max="100" 
+                        value={saturation} 
+                        onChange={(e) => setSaturation(parseInt(e.target.value))}
+                        className="w-full h-1.5 bg-charcoal-100 rounded-lg appearance-none cursor-pointer accent-primary-500"
+                      />
                     </div>
                   </div>
+
+                  <button 
+                    onClick={() => {
+                      setBrightness(0);
+                      setContrast(0);
+                      setSaturation(0);
+                    }}
+                    className="mt-2 py-2 bg-charcoal-100 hover:bg-charcoal-200 text-charcoal-600 rounded-xl text-[10px] font-bold uppercase transition-all"
+                  >
+                    Resetar Ajustes
+                  </button>
                 </div>
 
-                {/* Canvas Area - Now fills the entire flex area */}
-                <div className="w-full h-full flex items-center justify-center overflow-hidden bg-charcoal-200/30">
-                  <div className="relative bg-white shadow-2xl rounded-lg overflow-hidden ring-1 ring-charcoal-200">
+                {/* Canvas Area */}
+                <div className="absolute inset-0 flex items-center justify-center overflow-auto p-8 bg-charcoal-50/50">
+                  <div className="relative shadow-[0_0_100px_rgba(0,0,0,0.1)] rounded-sm overflow-hidden">
                     <canvas ref={editorCanvasElementRef} />
                   </div>
                 </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
-      {/* Zoom Modal */}
-      <AnimatePresence>
-        {zoomImage && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] bg-white/90 backdrop-blur-xl flex items-center justify-center p-4 md:p-8"
-            onClick={() => setZoomImage(null)}
-          >
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="max-w-full max-h-full flex flex-col items-center gap-6"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Header */}
-              <div className="w-full flex items-center justify-between px-2">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-primary-50 rounded-lg border border-primary-100">
-                    <Maximize2 size={20} className="text-primary-500" />
+                {/* Bottom Status Bar */}
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 px-6 py-2 bg-white/80 backdrop-blur-md border border-charcoal-200 rounded-full shadow-xl flex items-center gap-6">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-primary-500 rounded-full animate-pulse" />
+                    <span className="text-[10px] font-bold text-charcoal-600 uppercase tracking-widest">Modo Edição Ativo</span>
                   </div>
-                  <span className="text-charcoal-900 font-bold text-sm uppercase tracking-widest">Visualização em Alta Definição</span>
+                  <div className="h-4 w-[1px] bg-charcoal-200" />
+                  <div className="flex items-center gap-4 text-[10px] font-bold text-charcoal-400 uppercase tracking-widest">
+                    <span>Ferramenta: {activeEditorTool}</span>
+                    <span>Cor: {activeEditorColor}</span>
+                  </div>
                 </div>
-                <button 
-                  onClick={() => setZoomImage(null)}
-                  className="p-2 bg-charcoal-100 hover:bg-charcoal-200 rounded-full text-charcoal-600 transition-colors border border-charcoal-200"
-                >
-                  <X size={24} />
-                </button>
-              </div>
-
-              {/* Image Container */}
-              <div className="relative group">
-                <img 
-                  src={zoomImage} 
-                  alt="Zoom"
-                  className="max-w-full max-h-[70vh] rounded-2xl shadow-2xl object-contain ring-1 ring-charcoal-200"
-                />
-              </div>
-              
-              {/* Footer Buttons */}
-              <div className="flex items-center gap-4">
-                <button 
-                  onClick={() => {
-                    setImageEditorUrl(zoomImage);
-                    setZoomImage(null);
-                  }}
-                  className="px-8 py-3 bg-primary-500 text-white rounded-full font-bold text-sm hover:bg-primary-600 transition-all shadow-xl flex items-center gap-2 shadow-primary-500/20"
-                >
-                  <Edit3 size={18} />
-                  Editar Imagem
-                </button>
-                <button 
-                  onClick={() => setZoomImage(null)}
-                  className="px-8 py-3 bg-white text-charcoal-600 border border-charcoal-200 rounded-full font-bold text-sm hover:bg-white transition-all shadow-xl"
-                >
-                  Fechar Visualização
-                </button>
               </div>
             </motion.div>
           </motion.div>
