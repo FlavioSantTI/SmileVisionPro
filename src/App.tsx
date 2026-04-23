@@ -1708,7 +1708,7 @@ export default function App() {
 
           <div className="p-6 bg-white border-t border-charcoal-100 text-center">
             <p className="text-[10px] font-bold text-charcoal-400 uppercase tracking-widest">
-              @2026 - Versão 1.0
+              @2026 - Versão 2.0
             </p>
           </div>
         </motion.div>
